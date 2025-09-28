@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Streaming\Redis\Streams\**" />
+    <Content Remove="Streaming\Redis\Streams\**" />
+    <EmbeddedResource Remove="Streaming\Redis\Streams\**" />
+    <None Remove="Streaming\Redis\Streams\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.15" />
+    <PackageReference Include="Microsoft.Orleans.Clustering.Redis" Version="9.2.1" />
+    <PackageReference Include="Microsoft.Orleans.Persistence.Redis" Version="9.2.1" />
+    <PackageReference Include="Microsoft.Orleans.Server" Version="9.2.1" />
+    <PackageReference Include="Microsoft.Orleans.Streaming" Version="9.2.1" />
+    <PackageReference Include="OrleansDashboard" Version="8.2.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Orleans.Investimentos.ServiceDefaults\Orleans.Investimentos.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Orleans.Investimentos.Silo.Abstractions\Orleans.Investimentos.Silo.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>
