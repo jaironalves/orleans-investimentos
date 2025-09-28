@@ -3,6 +3,8 @@ using Microsoft.Extensions.Options;
 using Orleans.Clustering.Redis;
 using Orleans.Configuration;
 using Orleans.Investimentos.Silo.Storage;
+using Orleans.Investimentos.Silo.Streaming.Redis;
+using Orleans.Investimentos.Silo.Streaming.Redis.Hosting;
 using StackExchange.Redis;
 
 namespace Orleans.Investimentos.Silo.Extensions;
@@ -91,7 +93,13 @@ public static class OrleansExtensions
                   });
 
                 silo
-                  .AddMemoryStreams("AtivoPrecoStream")
+                   .AddRedisStreams("AtivoPrecoStream", (RedisStreamOptions opt) =>
+                   {
+                       
+                   });
+
+                silo
+                  //.AddMemoryStreams("AtivoPrecoStream")
                   .AddMemoryGrainStorage("PubSubStore");
 
                 //silo.AddStreamFilter<AtivoStreamFilter>("AtivoPrecoFilter");

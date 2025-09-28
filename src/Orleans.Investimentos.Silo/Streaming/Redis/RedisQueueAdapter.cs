@@ -36,8 +36,7 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
         public StreamProviderDirection Direction => StreamProviderDirection.ReadWrite;
 
         public IQueueAdapterReceiver CreateReceiver(QueueId queueId)
-        {
-            // Pass receiver options to RedisStreamReceiver
+        {            
             return new RedisQueueAdapterReceiver(queueId, _database, _loggerFactory.CreateLogger<RedisQueueAdapterReceiver>(), TimeProvider.System, _receiverOptions);
         }
 
