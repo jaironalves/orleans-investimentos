@@ -5,14 +5,16 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis.Hosting.Configurator;
 
 public class ClusterClientRedisStreamConfigurator : ClusterClientPersistentStreamConfigurator
 {
-    public ClusterClientRedisStreamConfigurator(string name, IClientBuilder clientBuilder) 
+    public ClusterClientRedisStreamConfigurator(string name, IClientBuilder clientBuilder)
         : base(name, clientBuilder, RedisAdapterFactory.Create)
     {
         clientBuilder
             .ConfigureServices(services =>
             {
-                services.ConfigureNamedOptionForLogging<RedisStreamOptions>(name)
-                .ConfigureNamedOptionForLogging<HashRingStreamQueueMapperOptions>(name);
+                RedisAdapterFactory
+                    .AddKeyedServices(services, name)
+                    .ConfigureNamedOptionForLogging<RedisStreamOptions>(name)
+                    .ConfigureNamedOptionForLogging<HashRingStreamQueueMapperOptions>(name);
             });
     }
 

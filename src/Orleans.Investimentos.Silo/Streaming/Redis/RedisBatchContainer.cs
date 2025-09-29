@@ -1,4 +1,5 @@
-﻿using Orleans.Streams;
+﻿using Orleans.Runtime;
+using Orleans.Streams;
 using StackExchange.Redis;
 using System.Text.Json;
 
@@ -68,5 +69,18 @@ public class RedisBatchContainer : IBatchContainer
     public bool ImportRequestContext()
     {
         return false;
+    }
+
+    internal static IEnumerable<NameValueEntry[]> ToStreamEntries<T>(StreamId streamId, IEnumerable<T> events)
+    {
+        foreach (var @event in events)
+        {
+            NameValueEntry streamNamespaceEntry = new("streamNamespace", streamId.Namespace);
+            NameValueEntry streamKeyEntry = new("streamKey", streamId.Key);
+            NameValueEntry eventTypeEntry = new("eventType", @event!.GetType().Name);
+            NameValueEntry dataEntry = new("data", JsonSerializer.Serialize(@event));
+
+            yield return [streamNamespaceEntry, streamKeyEntry, eventTypeEntry, dataEntry];            
+        }
     }
 }

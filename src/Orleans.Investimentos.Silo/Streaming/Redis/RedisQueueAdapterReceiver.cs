@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Orleans.Investimentos.Silo.Streaming.Redis.Storage;
 using Orleans.Streams;
 using StackExchange.Redis;
 
@@ -6,6 +8,11 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
 {
     public class RedisQueueAdapterReceiver : IQueueAdapterReceiver
     {
+        private readonly IRedisStreamStorage streamStorage;
+        private readonly QueueId queueId;
+        private readonly TimeProvider timeProvider;
+        private readonly ILogger<RedisQueueAdapterReceiver> logger;
+
         private readonly QueueId _queueId;
         private readonly IDatabase _database;
         private readonly ILogger<RedisQueueAdapterReceiver> _logger;
@@ -31,6 +38,16 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
             _lastTrimTime = _timeProvider.GetUtcNow();
         }
 
+        public RedisQueueAdapterReceiver(IRedisStreamStorage streamStorage,
+            QueueId queueId, TimeProvider timeProvider,
+            ILogger<RedisQueueAdapterReceiver> logger)
+        {
+            this.streamStorage = streamStorage;
+            this.queueId = queueId;
+            this.timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
         // This method might be less relevant if options are passed via constructor, 
         // but kept for now if direct TimeProvider manipulation is still needed for some tests.
         public void SetTimeProvider(TimeProvider timeProvider)
@@ -43,10 +60,16 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
         {
             try
             {
-                var events = _database.StreamReadGroupAsync(_queueId.ToString(), "consumer", _queueId.ToString(), _lastId, maxCount);
-                pendingTasks = events;
+                var streamEntriesTask = streamStorage
+                    .GetEntriesAsync(_queueId.ToString(), "consumer", _queueId.ToString(), _lastId, maxCount);
+
+                pendingTasks = streamEntriesTask;
                 _lastId = ">";
-                var batches = (await events).Select(e => new RedisBatchContainer(e)).ToList<IBatchContainer>();
+
+                var batches = (await streamEntriesTask)
+                    .Select(e => new RedisBatchContainer(e))
+                    .ToList<IBatchContainer>();
+
                 await TrimStreamIfNeeded();
 
                 return batches;
@@ -67,23 +90,26 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
         public virtual async Task TrimStreamIfNeeded()
         {
             // Changed: Use _timeProvider.GetUtcNow() and options for trim parameters
-            if (_timeProvider.GetUtcNow() - _lastTrimTime > TimeSpan.FromMinutes(_receiverOptions.TrimTimeMinutes))
-            {
-                try
-                {
-                    var trim = await _database.StreamTrimAsync(_queueId.ToString(), _receiverOptions.MaxStreamLength, useApproximateMaxLength: true);
-                    _lastTrimTime = _timeProvider.GetUtcNow();
-                    _logger.LogDebug("Trimmed stream {QueueId} to {MaxStreamLength} entries at {Time}", _queueId, _receiverOptions.MaxStreamLength, _lastTrimTime);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error trimming stream {QueueId}", _queueId);
-                }
-            }
+            //if (_timeProvider.GetUtcNow() - _lastTrimTime > TimeSpan.FromMinutes(_receiverOptions.TrimTimeMinutes))
+            //{
+            //    try
+            //    {
+            //        var trim = await _database.StreamTrimAsync(_queueId.ToString(), _receiverOptions.MaxStreamLength, useApproximateMaxLength: true);
+            //        _lastTrimTime = _timeProvider.GetUtcNow();
+            //        _logger.LogDebug("Trimmed stream {QueueId} to {MaxStreamLength} entries at {Time}", _queueId, _receiverOptions.MaxStreamLength, _lastTrimTime);
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        _logger.LogError(ex, "Error trimming stream {QueueId}", _queueId);
+            //    }
+            //}
         }
 
         public async Task Initialize(TimeSpan timeout)
         {
+            await Task.CompletedTask;
+            return;
+
             try
             {
                 using (var cts = new CancellationTokenSource(timeout))
@@ -105,12 +131,11 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
             {
                 foreach (var message in messages)
                 {
-                    var container = message as RedisBatchContainer;
-                    if (container != null)
+                    if (message is RedisBatchContainer container)
                     {
-                        var ack = _database.StreamAcknowledgeAsync(_queueId.ToString(), "consumer", container.StreamEntryId);
-                        pendingTasks = ack;
-                        await ack;
+                        var ackTask = streamStorage.EntryDeliveredAsync(_queueId.ToString(), "consumer", container.StreamEntryId);
+                        pendingTasks = ackTask;
+                        await ackTask;
                     }
                 }
             }

@@ -7,17 +7,12 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis.Hosting.Configurator;
 public class SiloRedisStreamConfigurator : SiloPersistentStreamConfigurator
 {
     public SiloRedisStreamConfigurator(string name, Action<Action<IServiceCollection>> configureDelegate) : 
-        base(name, configureDelegate, RedisAdapterFactoryV2.Create)
+        base(name, configureDelegate, RedisAdapterFactory.Create)
     {
         ConfigureDelegate(services =>
         {
-            services.AddKeyedSingleton<IRedisAdapterFactory>(name, (sp, serviceKey) =>
-            {
-                var providerName = $"{serviceKey}";
-                return new RedisAdapterFactoryV2(sp, new RedisProviderName(providerName));
-            });
-
-            services
+            RedisAdapterFactory
+                .AddKeyedServices(services, name)
                 .ConfigureNamedOptionForLogging<RedisStreamOptions>(name)
                 .ConfigureNamedOptionForLogging<SimpleQueueCacheOptions>(name)
                 .ConfigureNamedOptionForLogging<HashRingStreamQueueMapperOptions>(name);
