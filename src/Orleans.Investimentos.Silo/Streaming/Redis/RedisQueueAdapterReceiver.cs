@@ -8,83 +8,94 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
 {
     public class RedisQueueAdapterReceiver : IQueueAdapterReceiver
     {
-        private readonly IRedisStreamStorage streamStorage;
+        private IRedisStreamStorage? streamStorage;
         private readonly QueueId queueId;
         private readonly TimeProvider timeProvider;
         private readonly ILogger<RedisQueueAdapterReceiver> logger;
 
-        private readonly QueueId _queueId;
-        private readonly IDatabase _database;
-        private readonly ILogger<RedisQueueAdapterReceiver> _logger;
-        private string _lastId = "0";
-        private Task? pendingTasks;
+        private Task? outstandingTask;
+        private string lastId = "0";
+
+        
         private DateTimeOffset _lastTrimTime;
 
-        private TimeProvider _timeProvider;
-        private readonly RedisQueueAdapterReceiverOptions _receiverOptions; // Added options field
+        //private TimeProvider _timeProvider;
+        //private readonly RedisQueueAdapterReceiverOptions _receiverOptions; // Added options field
 
         // Changed: Constructor to accept TimeProvider and IOptions<RedisStreamReceiverOptions>
-        public RedisQueueAdapterReceiver(QueueId queueId,
-                                 IDatabase database,
-                                 ILogger<RedisQueueAdapterReceiver> logger,
-                                 TimeProvider? timeProvider = null,
-                                 IOptions<RedisQueueAdapterReceiverOptions>? receiverOptions = null)
+        //public RedisQueueAdapterReceiver(QueueId queueId,
+        //                         IDatabase database,
+        //                         ILogger<RedisQueueAdapterReceiver> logger,
+        //                         TimeProvider? timeProvider = null,
+        //                         IOptions<RedisQueueAdapterReceiverOptions>? receiverOptions = null)
+        //{
+        //    _queueId = queueId;
+        //    _database = database ?? throw new ArgumentNullException(nameof(database));
+        //    _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        //    _timeProvider = timeProvider ?? TimeProvider.System;
+        //    _receiverOptions = receiverOptions?.Value ?? new RedisQueueAdapterReceiverOptions(); // Use provided options or default
+        //    _lastTrimTime = _timeProvider.GetUtcNow();
+        //}
+
+        internal static IQueueAdapterReceiver Create(IConnectionMultiplexer connectionMultiplexer, QueueId queueId, TimeProvider timeProvider, ILoggerFactory loggerFactory)
         {
-            _queueId = queueId;
-            _database = database ?? throw new ArgumentNullException(nameof(database));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _timeProvider = timeProvider ?? TimeProvider.System;
-            _receiverOptions = receiverOptions?.Value ?? new RedisQueueAdapterReceiverOptions(); // Use provided options or default
-            _lastTrimTime = _timeProvider.GetUtcNow();
+            ArgumentNullException.ThrowIfNull(connectionMultiplexer);
+            if (queueId.IsDefault) throw new ArgumentNullException(nameof(queueId));
+            ArgumentNullException.ThrowIfNull(timeProvider);
+            ArgumentNullException.ThrowIfNull(loggerFactory);
+
+            var streamStorage = new RedisStreamStorage(connectionMultiplexer, queueId.ToString(), loggerFactory);
+            return new RedisQueueAdapterReceiver(streamStorage, queueId, timeProvider, loggerFactory.CreateLogger<RedisQueueAdapterReceiver>());            
         }
 
-        public RedisQueueAdapterReceiver(IRedisStreamStorage streamStorage,
+        private RedisQueueAdapterReceiver(IRedisStreamStorage streamStorage,
             QueueId queueId, TimeProvider timeProvider,
             ILogger<RedisQueueAdapterReceiver> logger)
         {
             this.streamStorage = streamStorage;
             this.queueId = queueId;
-            this.timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
-            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            this.timeProvider = timeProvider;
+            this.logger = logger;
         }
 
         // This method might be less relevant if options are passed via constructor, 
         // but kept for now if direct TimeProvider manipulation is still needed for some tests.
         public void SetTimeProvider(TimeProvider timeProvider)
         {
-            _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
-            _lastTrimTime = _timeProvider.GetUtcNow();
+            //_timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+            //_lastTrimTime = _timeProvider.GetUtcNow();
         }
 
         public async Task<IList<IBatchContainer>?> GetQueueMessagesAsync(int maxCount)
         {
             try
             {
-                var streamEntriesTask = streamStorage
-                    .GetEntriesAsync(_queueId.ToString(), "consumer", _queueId.ToString(), _lastId, maxCount);
+                var streamStorageRef = streamStorage; // store direct ref, in case we are somehow asked to shutdown while we are receiving.
+                if (streamStorageRef == null) return [];
 
-                pendingTasks = streamEntriesTask;
-                _lastId = ">";
+                var task = streamStorageRef
+                    .GetEntriesAsync(lastId, maxCount);
 
-                var batches = (await streamEntriesTask)
-                    .Select(e => new RedisBatchContainer(e))
+                outstandingTask = task;
+                lastId = ">";
+
+                var streamMessages = (await task)
+                    .Select(streamEntry => new RedisBatchContainer(streamEntry))
                     .ToList<IBatchContainer>();
 
                 await TrimStreamIfNeeded();
 
-                return batches;
+                return streamMessages;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error reading from stream {QueueId}", _queueId);
+                logger.LogError(ex, "Error reading from stream {QueueId}", queueId);
                 return default;
             }
             finally
             {
-                pendingTasks = null;
+                outstandingTask = null;
             }
-
-
         }
 
         public virtual async Task TrimStreamIfNeeded()
@@ -105,24 +116,27 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
             //}
         }
 
-        public async Task Initialize(TimeSpan timeout)
+        public Task Initialize(TimeSpan timeout)
         {
-            await Task.CompletedTask;
-            return;
+            if (streamStorage != null) // check in case we already shut it down.
+            {
+                return streamStorage.InitAsync();
+            }
+            return Task.CompletedTask;
 
-            try
-            {
-                using (var cts = new CancellationTokenSource(timeout))
-                {
-                    var task = _database.StreamCreateConsumerGroupAsync(_queueId.ToString(), "consumer", "$", true);
-                    await task.WaitAsync(timeout, cts.Token);
-                }
-            }
-            catch (Exception ex) when (ex.Message.Contains("name already exists")) { }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error initializing stream {QueueId}", _queueId);
-            }
+            //try
+            //{
+            //    using (var cts = new CancellationTokenSource(timeout))
+            //    {
+            //        var task = _database.StreamCreateConsumerGroupAsync(_queueId.ToString(), "consumer", "$", true);
+            //        await task.WaitAsync(timeout, cts.Token);
+            //    }
+            //}
+            //catch (Exception ex) when (ex.Message.Contains("name already exists")) { }
+            //catch (Exception ex)
+            //{
+            //    _logger.LogError(ex, "Error initializing stream {QueueId}", _queueId);
+            //}
         }
 
         public async Task MessagesDeliveredAsync(IList<IBatchContainer> messages)
@@ -133,33 +147,46 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
                 {
                     if (message is RedisBatchContainer container)
                     {
-                        var ackTask = streamStorage.EntryDeliveredAsync(_queueId.ToString(), "consumer", container.StreamEntryId);
-                        pendingTasks = ackTask;
+                        var ackTask = streamStorage
+                            .EntryDeliveredAsync(container.StreamEntryId);
+                        outstandingTask = ackTask;
                         await ackTask;
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error acknowledging messages in stream {QueueId}", _queueId);
+                logger.LogError(ex, "Error acknowledging messages in stream {QueueId}", _queueId);
             }
             finally
             {
-                pendingTasks = null;
+                outstandingTask = null;
             }
         }
 
         public async Task Shutdown(TimeSpan timeout)
         {
-            using (var cts = new CancellationTokenSource(timeout))
+            try
             {
-
-                if (pendingTasks is not null)
-                {
-                    await pendingTasks.WaitAsync(timeout, cts.Token);
-                }
+                // await the last storage operation, so after we shutdown and stop this receiver we don't get async operation completions from pending storage operations.
+                if (outstandingTask != null)
+                    await outstandingTask;
             }
-            _logger.LogInformation("Shutting down stream {QueueId}", _queueId);
-        }
+            finally
+            {
+                // remember that we shut down so we never try to read from the queue again.
+                streamStorage = null;
+            }
+
+            //using (var cts = new CancellationTokenSource(timeout))
+            //{
+
+            //    if (outstandingTask is not null)
+            //    {
+            //        await outstandingTask.WaitAsync(timeout, cts.Token);
+            //    }
+            //}
+            //logger.LogInformation("Shutting down stream {QueueId}", queueId);
+        }        
     }
 }

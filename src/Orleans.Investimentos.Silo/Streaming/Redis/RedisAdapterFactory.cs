@@ -1,10 +1,7 @@
-﻿using Microsoft.Extensions.Options;
-using Orleans.Configuration;
-using Orleans.Investimentos.Silo.Streaming.Redis.Storage;
+﻿using Orleans.Configuration;
 using Orleans.Providers.Streams.Common;
 using Orleans.Streams;
 using StackExchange.Redis;
-using System.Xml.Linq;
 
 namespace Orleans.Investimentos.Silo.Streaming.Redis
 {
@@ -13,27 +10,8 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
         private readonly IRedisServiceProvider provider;
         private readonly ILoggerFactory loggerFactory;
         private readonly IStreamFailureHandler streamFailureHandler;
-        private readonly IStreamQueueMapper streamQueueMapper;
-
-        //private readonly IConnectionMultiplexer _connectionMultiplexer;
-        //private readonly ILoggerFactory _loggerFactory;
-
-        //private readonly IStreamFailureHandler _streamFailureHandler;
-        //private readonly SimpleQueueCacheOptions _simpleQueueCacheOptions;
-        //private readonly HashRingBasedStreamQueueMapper _hashRingBasedStreamQueueMapper;
-        //private readonly RedisQueueAdapterReceiverOptions _receiverOptions;
-
-        public RedisAdapterFactory(IRedisServiceProvider provider)
-        {
-            this.provider = provider;
-
-            loggerFactory = provider.GetRequiredService<ILoggerFactory>();
-            streamFailureHandler = new RedisStreamFailureHandler(loggerFactory.CreateLogger<RedisStreamFailureHandler>());
-
-            var hashRingStreamQueueMapperOptions = provider.GetOptions<HashRingStreamQueueMapperOptions>();
-            streamQueueMapper = new HashRingBasedStreamQueueMapper(hashRingStreamQueueMapperOptions, provider.Name);            
-        }
-
+        private readonly IStreamQueueMapper streamQueueMapper;        
+                
         public static IQueueAdapterFactory Create(IServiceProvider provider, string providerName)
         {
             var factory = provider.GetRequiredKeyedService<IRedisAdapterFactory>(providerName);
@@ -48,12 +26,6 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
                     var providerNameKey = $"{serviceKey}";
                     return new RedisServiceProvider(sp, providerNameKey);
                 })
-                .AddKeyedSingleton<IRedisStreamStorage>(providerName, (sp, serviceKey) =>
-                {
-                    var providerNameKey = $"{serviceKey}";
-                    var provider = sp.GetRequiredKeyedService<IRedisServiceProvider>(providerNameKey);
-                    return new RedisStreamStorage(provider);
-                })
                 .AddKeyedSingleton<IRedisAdapterFactory>(providerName, (sp, serviceKey) =>
                 {
                     var providerNameKey = $"{serviceKey}";
@@ -64,9 +36,24 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
             return services;
         }
 
+        private RedisAdapterFactory(IRedisServiceProvider provider)
+        {
+            this.provider = provider;
+
+            loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+            streamFailureHandler = new RedisStreamFailureHandler(loggerFactory.CreateLogger<RedisStreamFailureHandler>());
+
+            var hashRingStreamQueueMapperOptions = provider.GetOptions<HashRingStreamQueueMapperOptions>();
+            streamQueueMapper = new HashRingBasedStreamQueueMapper(hashRingStreamQueueMapperOptions, provider.Name);
+        }
+
         public Task<IQueueAdapter> CreateAdapter()
         {
-            return Task.FromResult<IQueueAdapter>(new RedisQueueAdapter(provider));
+            var queueAdapter = new RedisQueueAdapter(provider.Name,
+                provider.GetRequiredService<IConnectionMultiplexer>(),
+                streamQueueMapper, loggerFactory);
+
+            return Task.FromResult<IQueueAdapter>(queueAdapter);
         }
 
         public Task<IStreamFailureHandler> GetDeliveryFailureHandler(QueueId queueId)

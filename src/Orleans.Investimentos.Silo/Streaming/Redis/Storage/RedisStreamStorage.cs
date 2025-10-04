@@ -1,29 +1,51 @@
-﻿using StackExchange.Redis;
+﻿using Orleans.Streams;
+using StackExchange.Redis;
+using System.Threading;
 
 namespace Orleans.Investimentos.Silo.Streaming.Redis.Storage;
 
-internal class RedisStreamStorage(IRedisServiceProvider provider) : IRedisStreamStorage
+internal class RedisStreamStorage(IConnectionMultiplexer connectionMultiplexer,
+    string streamName, ILoggerFactory loggerFactory) : IRedisStreamStorage
 {
-    private readonly IDatabase database = provider
-        .GetRequiredService<IConnectionMultiplexer>()
-        .GetDatabase();
+    private const string GROUP_NAME = "consumer";
 
-    public async Task AddEntriesAsync(RedisKey key, IEnumerable<NameValueEntry[]> entries)
+    private readonly ILogger<RedisStreamStorage> logger = loggerFactory.CreateLogger<RedisStreamStorage>();
+
+    private readonly IDatabase database = connectionMultiplexer.GetDatabase();
+
+    public async Task InitAsync()
     {
-        foreach (var entryValues in entries)
+        try
         {
-            await database.StreamAddAsync(key, entryValues);
+            await database
+                .StreamCreateConsumerGroupAsync(streamName, GROUP_NAME, "$", true);
+        }
+        catch (Exception ex) when (ex.Message.Contains("name already exists")) 
+        { 
+            logger.LogInformation("Consumer group 'consumer' already exists for stream {StreamName}", streamName);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error initializing stream {StreamName}", streamName);
         }
     }
 
-    public async Task<IEnumerable<StreamEntry>> GetEntriesAsync(RedisKey key, RedisValue groupName, RedisValue consumerName, RedisValue? position = null, int? count = null)
+    public async Task AddEntriesAsync(IEnumerable<NameValueEntry[]> entries)
     {
-        var entries = await database.StreamReadGroupAsync(key, groupName, consumerName, position ?? ">", count);
+        foreach (var entryValues in entries)
+        {
+            await database.StreamAddAsync(streamName, entryValues);
+        }
+    }
+
+    public async Task<IEnumerable<StreamEntry>> GetEntriesAsync(RedisValue? position = null, int? count = null)
+    {
+        var entries = await database.StreamReadGroupAsync(streamName, GROUP_NAME, streamName, position ?? ">", count);
         return entries;
     }
 
-    public async Task EntryDeliveredAsync(RedisKey key, RedisValue groupName, RedisValue messageId)
+    public async Task EntryDeliveredAsync(RedisValue messageId)
     {
-        await database.StreamAcknowledgeAsync(key, groupName, messageId);
-    }
+        await database.StreamAcknowledgeAsync(streamName, GROUP_NAME, messageId);
+    }    
 }

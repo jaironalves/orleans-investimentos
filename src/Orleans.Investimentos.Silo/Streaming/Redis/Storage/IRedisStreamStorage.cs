@@ -4,10 +4,11 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis.Storage;
 
 public interface IRedisStreamStorage
 {
-    Task AddEntriesAsync(RedisKey key, IEnumerable<NameValueEntry[]> entries);    
+    Task InitAsync();
 
-    Task<IEnumerable<StreamEntry>> GetEntriesAsync(RedisKey key, RedisValue groupName, RedisValue consumerName,
-        RedisValue? position = null, int? count = null);
+    Task AddEntriesAsync(IEnumerable<NameValueEntry[]> entries);    
 
-    Task EntryDeliveredAsync(RedisKey key, RedisValue groupName, RedisValue messageId);
+    Task<IEnumerable<StreamEntry>> GetEntriesAsync(RedisValue? position = null, int? count = null);
+
+    Task EntryDeliveredAsync(RedisValue messageId);
 }
