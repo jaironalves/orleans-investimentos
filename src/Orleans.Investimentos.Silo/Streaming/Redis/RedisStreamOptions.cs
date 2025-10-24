@@ -1,5 +1,7 @@
-﻿using Orleans.Clustering.Redis;
+﻿using Orleans.Configuration;
+using Orleans.Streams;
 using StackExchange.Redis;
+using System.Text;
 
 namespace Orleans.Investimentos.Silo.Streaming.Redis;
 
@@ -13,32 +15,33 @@ public class RedisStreamOptions
     /// </summary>
     [RedactRedisConfigurationOptions]
     public ConfigurationOptions ConfigurationOptions { get; set; } = default!;
-
-    /// <summary>
-    /// The delegate used to create a Redis configuration options.
-    /// </summary>
-    public Func<IServiceProvider, Task<ConfigurationOptions>> CreateConfigurationOptions { get; set; } = DefaultCreateConfigurationOptions;
-    
+        
     /// <summary>
     /// The delegate used to create a Redis connection multiplexer.
     /// </summary>
-    public Func<RedisStreamOptions, Task<IConnectionMultiplexer>> CreateMultiplexer { get; set; } = DefaultCreateMultiplexer;
+    public Func<IServiceProvider, RedisStreamOptions, Task<IConnectionMultiplexer>> CreateMultiplexer { get; set; } = DefaultCreateMultiplexer;
+
+    /// <summary>
+    /// Gets the Redis key for the provided QueueId. If not set, the default implementation will be used, which is equivalent to <c>{ServiceId}/streams/{queueId}</c>.
+    /// </summary>
+    public Func<ClusterOptions, QueueId, RedisKey> GetRedisKey { get; set; } = DefaultGetRedisKey;    
 
 
     /// <summary>
     /// The default multiplexer creation delegate.
     /// </summary>
-    public static async Task<IConnectionMultiplexer> DefaultCreateMultiplexer(RedisStreamOptions options)
+    public static async Task<IConnectionMultiplexer> DefaultCreateMultiplexer(IServiceProvider _, RedisStreamOptions options)
     {
         return await ConnectionMultiplexer.ConnectAsync(options.ConfigurationOptions);
-    }
+    }   
 
     /// <summary>
-    /// The default configuration options creation delegate.
-    /// </summary>
-    private static Task<ConfigurationOptions> DefaultCreateConfigurationOptions(IServiceProvider provider)
-    {
-        return Task.FromResult(new ConfigurationOptions());
+    /// The default redis key delegate.
+    /// </summary>        
+    private static RedisKey DefaultGetRedisKey(ClusterOptions clusterOptions, QueueId queueId)
+    {        
+        RedisKey key = Encoding.UTF8.GetBytes($"{clusterOptions.ServiceId}/streams/{queueId}");
+        return key;
     }
 }
 

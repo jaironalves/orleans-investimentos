@@ -1,4 +1,5 @@
-﻿using Orleans.Configuration;
+﻿using Microsoft.Extensions.Options;
+using Orleans.Configuration;
 using Orleans.Providers.Streams.Common;
 using Orleans.Streams;
 using StackExchange.Redis;
@@ -8,10 +9,11 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
     public class RedisAdapterFactory : IRedisAdapterFactory
     {
         private readonly IRedisServiceProvider provider;
-        private readonly ILoggerFactory loggerFactory;
+        private readonly RedisStreamOptions options;
         private readonly IStreamFailureHandler streamFailureHandler;
-        private readonly IStreamQueueMapper streamQueueMapper;        
-                
+        private readonly IStreamQueueMapper streamQueueMapper;
+        private readonly ILoggerFactory loggerFactory;
+
         public static IQueueAdapterFactory Create(IServiceProvider provider, string providerName)
         {
             var factory = provider.GetRequiredKeyedService<IRedisAdapterFactory>(providerName);
@@ -40,6 +42,8 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
         {
             this.provider = provider;
 
+            options = provider.GetOptions<RedisStreamOptions>();
+
             loggerFactory = provider.GetRequiredService<ILoggerFactory>();
             streamFailureHandler = new RedisStreamFailureHandler(loggerFactory.CreateLogger<RedisStreamFailureHandler>());
 
@@ -47,13 +51,15 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
             streamQueueMapper = new HashRingBasedStreamQueueMapper(hashRingStreamQueueMapperOptions, provider.Name);
         }
 
-        public Task<IQueueAdapter> CreateAdapter()
+        public async Task<IQueueAdapter> CreateAdapter()
         {
-            var queueAdapter = new RedisQueueAdapter(provider.Name,
-                provider.GetRequiredService<IConnectionMultiplexer>(),
-                streamQueueMapper, loggerFactory);
+            var connectionMultiplexer = await options.CreateMultiplexer(provider, options);
+            var clusterOptions = provider.GetRequiredService<IOptions<ClusterOptions>>().Value;
 
-            return Task.FromResult<IQueueAdapter>(queueAdapter);
+            var queueAdapter = new RedisAdapter(provider, options, clusterOptions,
+                connectionMultiplexer, streamQueueMapper, loggerFactory);
+
+            return queueAdapter;
         }
 
         public Task<IStreamFailureHandler> GetDeliveryFailureHandler(QueueId queueId)

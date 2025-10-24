@@ -3,12 +3,20 @@ using StackExchange.Redis;
 
 namespace Orleans.Investimentos.Silo.Streaming.Redis;
 
+[Serializable]
+[GenerateSerializer]
+[Alias("RedisSequenceToken")]
 public class RedisSequenceToken : StreamSequenceToken
 {
     [Id(0)]
     public sealed override long SequenceNumber { get; protected set; }
     [Id(1)]
     public sealed override int EventIndex { get; protected set; }
+
+    public RedisSequenceToken()
+    {
+        
+    }
 
     public RedisSequenceToken(RedisValue id)
     {

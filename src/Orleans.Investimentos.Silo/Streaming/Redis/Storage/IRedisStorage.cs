@@ -2,7 +2,7 @@
 
 namespace Orleans.Investimentos.Silo.Streaming.Redis.Storage;
 
-public interface IRedisStreamStorage
+public interface IRedisStorage
 {
     Task InitAsync();
 

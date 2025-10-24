@@ -41,7 +41,7 @@ app.Map("/dashboard", x => x.UseOrleansDashboard());
 
 app.MapPost("/posicao", async (IGrainFactory grainFactory, [FromBody]AtivarPosicaoPost request) =>
 {
-    var key = $"{request.Conta}:{request.Ativo}:VIS";
+    var key = $"{request.Conta}-{request.Ativo}-VIS";
     var posicaoGrain = grainFactory.GetGrain<IPosicaoGrain>(key);
     await posicaoGrain.AtualizarQuantidadeAsync(request.Quantidade);
     var model = await posicaoGrain.ObterAsync();
@@ -53,7 +53,7 @@ app.MapPost("/posicao", async (IGrainFactory grainFactory, [FromBody]AtivarPosic
 
 app.MapGet("/posicao", async (IGrainFactory grainFactory, string conta, string ativo) =>
 {
-    var key = $"{conta}:{ativo}:VIS";
+    var key = $"{conta}-{ativo}-VIS";
     var posicaoGrain = grainFactory.GetGrain<IPosicaoGrain>(key);
     var model = await posicaoGrain.ObterAsync();
 

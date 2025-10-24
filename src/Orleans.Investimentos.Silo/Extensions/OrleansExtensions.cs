@@ -93,9 +93,14 @@ public static class OrleansExtensions
                   });
 
                 silo
-                   .AddRedisStreams("AtivoPrecoStream", (RedisStreamOptions opt) =>
+                   .AddRedisStreams("AtivoPrecoStream", opt =>
                    {
-                       
+                       opt.ConfigurationOptions = redisOptions;
+                       opt.CreateMultiplexer = (sp, opt) =>
+                       {
+                           var connectionMultiplexer = sp.GetRequiredService<IConnectionMultiplexer>();
+                           return Task.FromResult(connectionMultiplexer);
+                       };
                    });
 
                 silo

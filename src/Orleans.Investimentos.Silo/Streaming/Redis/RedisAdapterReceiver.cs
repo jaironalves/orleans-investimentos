@@ -6,18 +6,18 @@ using StackExchange.Redis;
 
 namespace Orleans.Investimentos.Silo.Streaming.Redis
 {
-    public class RedisQueueAdapterReceiver : IQueueAdapterReceiver
+    public class RedisAdapterReceiver : IQueueAdapterReceiver
     {
-        private IRedisStreamStorage? streamStorage;
+        private IRedisStorage? streamStorage;
         private readonly QueueId queueId;
         private readonly TimeProvider timeProvider;
-        private readonly ILogger<RedisQueueAdapterReceiver> logger;
+        private readonly ILogger<RedisAdapterReceiver> logger;
 
         private Task? outstandingTask;
         private string lastId = "0";
 
         
-        private DateTimeOffset _lastTrimTime;
+        private DateTimeOffset _lastTrimTime;        
 
         //private TimeProvider _timeProvider;
         //private readonly RedisQueueAdapterReceiverOptions _receiverOptions; // Added options field
@@ -37,20 +37,20 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
         //    _lastTrimTime = _timeProvider.GetUtcNow();
         //}
 
-        internal static IQueueAdapterReceiver Create(IConnectionMultiplexer connectionMultiplexer, QueueId queueId, TimeProvider timeProvider, ILoggerFactory loggerFactory)
-        {
-            ArgumentNullException.ThrowIfNull(connectionMultiplexer);
+        internal static IQueueAdapterReceiver Create(IRedisStorage storage, 
+            QueueId queueId, TimeProvider timeProvider, ILoggerFactory loggerFactory)
+        {            
             if (queueId.IsDefault) throw new ArgumentNullException(nameof(queueId));
             ArgumentNullException.ThrowIfNull(timeProvider);
             ArgumentNullException.ThrowIfNull(loggerFactory);
-
-            var streamStorage = new RedisStreamStorage(connectionMultiplexer, queueId.ToString(), loggerFactory);
-            return new RedisQueueAdapterReceiver(streamStorage, queueId, timeProvider, loggerFactory.CreateLogger<RedisQueueAdapterReceiver>());            
+                        
+            return new RedisAdapterReceiver(storage, queueId, timeProvider, loggerFactory.CreateLogger<RedisAdapterReceiver>());            
         }
 
-        private RedisQueueAdapterReceiver(IRedisStreamStorage streamStorage,
+        private RedisAdapterReceiver(
+            IRedisStorage streamStorage,
             QueueId queueId, TimeProvider timeProvider,
-            ILogger<RedisQueueAdapterReceiver> logger)
+            ILogger<RedisAdapterReceiver> logger)
         {
             this.streamStorage = streamStorage;
             this.queueId = queueId;
@@ -156,7 +156,7 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error acknowledging messages in stream {QueueId}", _queueId);
+                //logger.LogError(ex, "Error acknowledging messages in stream {QueueId}", _queueId);
             }
             finally
             {

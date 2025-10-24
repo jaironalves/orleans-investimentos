@@ -3,6 +3,7 @@ using Orleans.Investimentos.Silo.Abstractions.Graos.Ativo.Models;
 using Orleans.Investimentos.Silo.Abstractions.Graos.Posicao;
 using Orleans.Investimentos.Silo.Abstractions.Graos.Posicao.Models;
 using Orleans.Investimentos.Silo.Graos.Posicao.States;
+using Orleans.Investimentos.Silo.Streaming.Redis;
 using Orleans.Metadata;
 using Orleans.Streams;
 
@@ -26,7 +27,7 @@ class teste : IStreamNamespacePredicate
     }
 }
 
-[ImplicitStreamSubscription()]
+//[ImplicitStreamSubscription()]
 internal class PosicaoGrain(
     [PersistentState("posicao", "Investimentos")]
     IPersistentState<PosicaoState> posicaoState) : Grain
@@ -43,7 +44,7 @@ internal class PosicaoGrain(
 
     private (string Conta, string Ativo, string TipoMercado) MontarKey()
     {
-        var partes = this.GetPrimaryKeyString().Split(':');
+        var partes = this.GetPrimaryKeyString().Split('-');
         return (partes[0], partes[1], partes[2]);
     }
 
@@ -68,7 +69,8 @@ internal class PosicaoGrain(
         {
            foreach (var handle in allMyHandles)
             {
-                await handle.ResumeAsync(this);                
+                var redis = new RedisSequenceToken("1761270917005-0");               
+                await handle.ResumeAsync(this, redis);                
             }            
         }
         else
