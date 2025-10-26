@@ -9,7 +9,7 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
 {
     public class RedisAdapter : IQueueAdapter
     {
-        private readonly IRedisServiceProvider provider;
+        private readonly RedisServiceProvider provider;
         private readonly RedisStreamOptions options;
 
         private readonly ClusterOptions clusterOptions;
@@ -17,9 +17,9 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
         private readonly IStreamQueueMapper streamQueueMapper;
         private readonly ILoggerFactory loggerFactory;
 
-        protected readonly ConcurrentDictionary<QueueId, IRedisStorage> StreamStorages = new();
+        private readonly ConcurrentDictionary<QueueId, RedisStorage> StreamStorages = new();
 
-        internal RedisAdapter(IRedisServiceProvider provider,            
+        internal RedisAdapter(RedisServiceProvider provider,            
             RedisStreamOptions options,                        
             ClusterOptions clusterOptions,
             IConnectionMultiplexer connectionMultiplexer,
@@ -57,7 +57,7 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
         {
             var queueId = streamQueueMapper.GetQueueForStream(streamId);
 
-            if (!StreamStorages.TryGetValue(queueId, out IRedisStorage? streamStorage))
+            if (!StreamStorages.TryGetValue(queueId, out RedisStorage? streamStorage))
             {
                 var tmpStreamStorage = GetStorage(queueId);
                 await tmpStreamStorage.InitAsync();

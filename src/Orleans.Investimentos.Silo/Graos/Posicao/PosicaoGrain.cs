@@ -69,8 +69,8 @@ internal class PosicaoGrain(
         {
            foreach (var handle in allMyHandles)
             {
-                var redis = new RedisSequenceToken("1761270917005-0");               
-                await handle.ResumeAsync(this, redis);                
+                //var redis = new RedisSequenceToken("1761270917005-0");               
+                await handle.ResumeAsync(this);                
             }            
         }
         else

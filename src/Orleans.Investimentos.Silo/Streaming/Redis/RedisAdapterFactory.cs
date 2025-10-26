@@ -6,9 +6,9 @@ using StackExchange.Redis;
 
 namespace Orleans.Investimentos.Silo.Streaming.Redis
 {
-    public class RedisAdapterFactory : IRedisAdapterFactory
+    public class RedisAdapterFactory : IQueueAdapterFactory
     {
-        private readonly IRedisServiceProvider provider;
+        private readonly RedisServiceProvider provider;
         private readonly RedisStreamOptions options;
         private readonly IStreamFailureHandler streamFailureHandler;
         private readonly IStreamQueueMapper streamQueueMapper;
@@ -16,29 +16,29 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
 
         public static IQueueAdapterFactory Create(IServiceProvider provider, string providerName)
         {
-            var factory = provider.GetRequiredKeyedService<IRedisAdapterFactory>(providerName);
+            var factory = provider.GetRequiredKeyedService<RedisAdapterFactory>(providerName);
             return factory;
         }
 
         public static IServiceCollection AddKeyedServices(IServiceCollection services, string providerName)
         {
             services
-                .AddKeyedSingleton<IRedisServiceProvider>(providerName, (sp, serviceKey) =>
+                .AddKeyedSingleton<RedisServiceProvider>(providerName, (sp, serviceKey) =>
                 {
                     var providerNameKey = $"{serviceKey}";
                     return new RedisServiceProvider(sp, providerNameKey);
                 })
-                .AddKeyedSingleton<IRedisAdapterFactory>(providerName, (sp, serviceKey) =>
+                .AddKeyedSingleton<RedisAdapterFactory>(providerName, (sp, serviceKey) =>
                 {
                     var providerNameKey = $"{serviceKey}";
-                    var provider = sp.GetRequiredKeyedService<IRedisServiceProvider>(providerNameKey);
+                    var provider = sp.GetRequiredKeyedService<RedisServiceProvider>(providerNameKey);
                     return new RedisAdapterFactory(provider);
                 });
 
             return services;
         }
 
-        private RedisAdapterFactory(IRedisServiceProvider provider)
+        private RedisAdapterFactory(RedisServiceProvider provider)
         {
             this.provider = provider;
 

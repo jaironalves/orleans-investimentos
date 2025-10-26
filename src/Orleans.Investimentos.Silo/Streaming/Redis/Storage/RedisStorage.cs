@@ -5,7 +5,7 @@ using System.Threading;
 namespace Orleans.Investimentos.Silo.Streaming.Redis.Storage;
 
 internal class RedisStorage(IConnectionMultiplexer connectionMultiplexer,
-    RedisKey streamKey, string streamName, ILoggerFactory loggerFactory) : IRedisStorage
+    RedisKey streamKey, string streamName, ILoggerFactory loggerFactory)
 {
     private const string GROUP_NAME = "consumer";
 

@@ -60,7 +60,7 @@ public static class OrleansExtensions
                 var configuration = silo.Configuration;
                 var redisConnectionString = configuration.GetConnectionString("silo-redis");
 
-                var porta = new Random().Next(10001, 10100);
+                var porta = 10000;//new Random().Next(10001, 10100);
                 //var portaGateway = new Random().Next(20001, 20100);
                 var portaGateway = 30000;
 
@@ -87,9 +87,13 @@ public static class OrleansExtensions
                   .AddRedisGrainStorage("Investimentos", opt =>
                   {
 
-                    opt.ConfigurationOptions = redisOptions;
-                  //   // opt.ConfigurationOptions.DefaultDatabase = 1;
-                  //    //opt.CreateMultiplexer = (_) => Task.FromResult<IConnectionMultiplexer>(new ConnectionMultiplexerWrapper(connection, 1));
+                      opt.ConfigurationOptions = redisOptions;
+                      //   // opt.ConfigurationOptions.DefaultDatabase = 1;
+                      //    //opt.CreateMultiplexer = (_) => Task.FromResult<IConnectionMultiplexer>(new ConnectionMultiplexerWrapper(connection, 1));
+                  })
+                  .AddRedisGrainStorage("PubSubStore", opt =>
+                  {
+                      opt.ConfigurationOptions = redisOptions;
                   });
 
                 silo
@@ -103,9 +107,9 @@ public static class OrleansExtensions
                        };
                    });
 
-                silo
+                //silo
                   //.AddMemoryStreams("AtivoPrecoStream")
-                  .AddMemoryGrainStorage("PubSubStore");
+                  //.AddMemoryGrainStorage("PubSubStore");
 
                 //silo.AddStreamFilter<AtivoStreamFilter>("AtivoPrecoFilter");
 

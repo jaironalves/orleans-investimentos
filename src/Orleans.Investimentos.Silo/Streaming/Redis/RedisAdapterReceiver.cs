@@ -8,7 +8,7 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
 {
     public class RedisAdapterReceiver : IQueueAdapterReceiver
     {
-        private IRedisStorage? streamStorage;
+        private RedisStorage? streamStorage;
         private readonly QueueId queueId;
         private readonly TimeProvider timeProvider;
         private readonly ILogger<RedisAdapterReceiver> logger;
@@ -37,7 +37,7 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
         //    _lastTrimTime = _timeProvider.GetUtcNow();
         //}
 
-        internal static IQueueAdapterReceiver Create(IRedisStorage storage, 
+        internal static IQueueAdapterReceiver Create(RedisStorage storage, 
             QueueId queueId, TimeProvider timeProvider, ILoggerFactory loggerFactory)
         {            
             if (queueId.IsDefault) throw new ArgumentNullException(nameof(queueId));
@@ -48,7 +48,7 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
         }
 
         private RedisAdapterReceiver(
-            IRedisStorage streamStorage,
+            RedisStorage streamStorage,
             QueueId queueId, TimeProvider timeProvider,
             ILogger<RedisAdapterReceiver> logger)
         {

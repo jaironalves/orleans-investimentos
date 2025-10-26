@@ -3,16 +3,16 @@ using Microsoft.Extensions.Options;
 
 namespace Orleans.Investimentos.Silo.Streaming.Redis
 {
-    public interface IRedisServiceProvider : IServiceProvider
-    {
-        string Name { get; }
+    //public interface IRedisServiceProvider : IServiceProvider
+    //{
+    //    string Name { get; }
 
-        TOption GetOptions<TOption>() where TOption : class, new();
+    //    TOption GetOptions<TOption>() where TOption : class, new();
 
-        T GetNamedService<T>() where T : notnull;
-    }
+    //    T GetNamedService<T>() where T : notnull;
+    //}
 
-    public class RedisServiceProvider(IServiceProvider serviceProvider, string name) : IRedisServiceProvider
+    internal class RedisServiceProvider(IServiceProvider serviceProvider, string name) : IServiceProvider
     {
         public string Name => name;
 
