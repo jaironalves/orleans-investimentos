@@ -15,7 +15,7 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis
 
             builder
                 .AddPersistentStreams(providerName, 
-                    RedisAdapterFactory.Create,
+                    RedisStreamAdapterFactory.Create,
                     null);
 
             //builder.AddPersistentStreams(providerName, (sp, name) =>

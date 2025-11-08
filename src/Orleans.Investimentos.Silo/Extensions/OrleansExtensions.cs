@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Options;
 using Orleans.Clustering.Redis;
 using Orleans.Configuration;
+using Orleans.Investimentos.Silo.Serialization;
 using Orleans.Investimentos.Silo.Storage;
 using Orleans.Investimentos.Silo.Streaming.Redis;
 using Orleans.Investimentos.Silo.Streaming.Redis.Hosting;
@@ -71,6 +72,7 @@ public static class OrleansExtensions
                     //.UseRedisClustering((Action<RedisClusteringOptions>?)null);
                     .UseRedisClustering(opt =>
                     {
+                        //opt.CreateRedisKey
                         opt.ConfigurationOptions = redisOptions;
                         //opt.ConfigurationOptions.DefaultDatabase = 0;
                         //opt.CreateMultiplexer = (_) => Task.FromResult<IConnectionMultiplexer>(new ConnectionMultiplexerWrapper(connection, 0));
@@ -85,9 +87,10 @@ public static class OrleansExtensions
                 silo
                   //.AddRedisGrainStorage("Investimentos");
                   .AddRedisGrainStorage("Investimentos", opt =>
-                  {
-
+                  {   
                       opt.ConfigurationOptions = redisOptions;
+                      opt.GrainStorageSerializer = new SystemTextJsonStorageSerializer();
+                     
                       //   // opt.ConfigurationOptions.DefaultDatabase = 1;
                       //    //opt.CreateMultiplexer = (_) => Task.FromResult<IConnectionMultiplexer>(new ConnectionMultiplexerWrapper(connection, 1));
                   })
@@ -100,6 +103,8 @@ public static class OrleansExtensions
                    .AddRedisStreams("AtivoPrecoStream", opt =>
                    {
                        opt.ConfigurationOptions = redisOptions;
+                       opt.MaxStreamLength = 10;
+                       opt.TrimTimeMinutes = 2;
                        opt.CreateMultiplexer = (sp, opt) =>
                        {
                            var connectionMultiplexer = sp.GetRequiredService<IConnectionMultiplexer>();

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Orleans.Investimentos.ServiceDefaults;
 using Orleans.Investimentos.Silo.Abstractions.Graos.Ativo;
+using Orleans.Investimentos.Silo.Abstractions.Graos.InvestidorRv;
 using Orleans.Investimentos.Silo.Abstractions.Graos.Posicao;
 using Orleans.Investimentos.Silo.Extensions;
 using Orleans.Investimentos.Silo.Models;
@@ -38,6 +39,16 @@ app.MapDefaultEndpoints();
 
 app.Map("/dashboard", x => x.UseOrleansDashboard());
 
+app.MapPost("/investidor-rv", async (IGrainFactory grainFactory) =>
+{    
+    var investidorGrain = grainFactory.GetGrain<IInvestidorRvGrain>("12345");
+    //await investidorGrain.SalvarAsync();
+    var model = await investidorGrain.ObterAsync();
+
+    return Results.Ok(model);
+})
+.WithName("PostInvestidorRv")
+.WithOpenApi();
 
 app.MapPost("/posicao", async (IGrainFactory grainFactory, [FromBody]AtivarPosicaoPost request) =>
 {

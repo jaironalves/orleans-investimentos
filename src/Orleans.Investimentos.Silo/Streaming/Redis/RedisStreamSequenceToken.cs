@@ -5,20 +5,15 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis;
 
 [Serializable]
 [GenerateSerializer]
-[Alias("RedisSequenceToken")]
-public class RedisSequenceToken : StreamSequenceToken
+[Alias("RedisStreamSequenceToken")]
+public class RedisStreamSequenceToken : StreamSequenceToken
 {
     [Id(0)]
     public sealed override long SequenceNumber { get; protected set; }
     [Id(1)]
     public sealed override int EventIndex { get; protected set; }
 
-    public RedisSequenceToken()
-    {
-        
-    }
-
-    public RedisSequenceToken(RedisValue id)
+    public RedisStreamSequenceToken(RedisValue id)
     {
         [System.Diagnostics.CodeAnalysis.DoesNotReturn] static void ThrowArgumentException() => throw new ArgumentException(message: $"Invalid {nameof(id)}", paramName: nameof(id));
         var redisValueId = id.ToString();
@@ -29,15 +24,16 @@ public class RedisSequenceToken : StreamSequenceToken
         SequenceNumber = long.Parse(redisValueId.AsSpan(0, splitIndex));
         EventIndex = int.Parse(redisValueId.AsSpan(splitIndex + 1));
     }
-    public RedisSequenceToken(long sequenceNumber, int eventIndex)
+    public RedisStreamSequenceToken(long sequenceNumber, int eventIndex)
     {
         SequenceNumber = sequenceNumber;
         EventIndex = eventIndex;
     }
     public override int CompareTo(StreamSequenceToken other)
     {
-        if (other is null) throw new ArgumentNullException(nameof(other));
-        if (other is RedisSequenceToken token)
+        ArgumentNullException.ThrowIfNull(other);
+
+        if (other is RedisStreamSequenceToken token)
         {
             if (SequenceNumber == token.SequenceNumber)
             {
@@ -50,7 +46,6 @@ public class RedisSequenceToken : StreamSequenceToken
 
     public override bool Equals(StreamSequenceToken? other)
     {
-        var token = other as RedisSequenceToken;
-        return token != null && SequenceNumber == token.SequenceNumber && EventIndex == token.EventIndex;
+        return other is RedisStreamSequenceToken token && SequenceNumber == token.SequenceNumber && EventIndex == token.EventIndex;
     }
 }

@@ -17,6 +17,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "apps", "apps", "{289EA22B-3
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orleans.Investimentos.Silo.Abstractions", "src\Orleans.Investimentos.Silo.Abstractions\Orleans.Investimentos.Silo.Abstractions.csproj", "{46F35ACE-5533-AEE4-0CB1-D3CAAFFBE261}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{1F1854FA-3632-403F-ACA6-61C0A88FD5B1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orleans.Investimentos.UnitTests", "tests\Orleans.Investimentos.UnitTests\Orleans.Investimentos.UnitTests.csproj", "{DE8CD992-B671-4EA7-B1D3-2D737929871B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +43,10 @@ Global
 		{46F35ACE-5533-AEE4-0CB1-D3CAAFFBE261}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{46F35ACE-5533-AEE4-0CB1-D3CAAFFBE261}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{46F35ACE-5533-AEE4-0CB1-D3CAAFFBE261}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DE8CD992-B671-4EA7-B1D3-2D737929871B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE8CD992-B671-4EA7-B1D3-2D737929871B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE8CD992-B671-4EA7-B1D3-2D737929871B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE8CD992-B671-4EA7-B1D3-2D737929871B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -48,6 +56,7 @@ Global
 		{1FA1041F-37BE-480A-BDFB-4263CD162810} = {289EA22B-30E8-451C-B9E4-2921F47CBC16}
 		{0C289841-4621-4847-A144-57D183E4A12F} = {96B891C7-9ADB-4130-9A12-60A321EB87A4}
 		{46F35ACE-5533-AEE4-0CB1-D3CAAFFBE261} = {96B891C7-9ADB-4130-9A12-60A321EB87A4}
+		{DE8CD992-B671-4EA7-B1D3-2D737929871B} = {1F1854FA-3632-403F-ACA6-61C0A88FD5B1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {16022EFD-57C0-40BE-97C7-5B56E85C2A20}

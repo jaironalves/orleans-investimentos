@@ -1,14 +1,17 @@
 ﻿using Orleans.Investimentos.Silo.Abstractions.Graos.Ativo;
 using Orleans.Investimentos.Silo.Abstractions.Graos.Ativo.Models;
 using Orleans.Investimentos.Silo.Graos.Ativo.States;
+using Orleans.Investimentos.Silo.Graos.Base;
 using Orleans.Streams;
 
 namespace Orleans.Investimentos.Silo.Graos.Ativo;
 
 internal class AtivoGrain(
     [PersistentState("ativo", "Investimentos")] 
-    IPersistentState<AtivoState> ativoState) : Grain, IAtivoGrain
+    IPersistentState<AtivoState> ativoState) : GrainStringKey, IAtivoGrain
 {
+   
+   
     private IAsyncStream<AtivoPrecoStreamModel> _precoStream;
 
     public override Task OnActivateAsync(CancellationToken cancellationToken)
@@ -22,6 +25,11 @@ internal class AtivoGrain(
 
     public async Task AtualizarPrecoAsync(decimal preco)
     {
+        var conext = GrainContext;
+        var grainbase = (this as Grain);
+        var contextbase = grainbase.GrainContext;
+        //await this.RegisterOrUpdateReminder("teste", TimeSpan.FromSeconds(3000), TimeSpan.FromSeconds(10));
+
         ativoState.State.Preco = preco;
         await ativoState.WriteStateAsync();
 

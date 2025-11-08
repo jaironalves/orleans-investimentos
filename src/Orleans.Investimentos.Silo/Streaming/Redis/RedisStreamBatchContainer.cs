@@ -1,11 +1,10 @@
-﻿using Orleans.Runtime;
-using Orleans.Streams;
+﻿using Orleans.Streams;
 using StackExchange.Redis;
 using System.Text.Json;
 
 namespace Orleans.Investimentos.Silo.Streaming.Redis;
 
-public class RedisBatchContainer : IBatchContainer
+public class RedisStreamBatchContainer : IBatchContainer
 {
     [Id(0)]
     public StreamId StreamId { get; }
@@ -22,7 +21,7 @@ public class RedisBatchContainer : IBatchContainer
     [Id(4)]
     public string StreamEntryId { get; }
 
-    public RedisBatchContainer(StreamEntry streamEntry)
+    public RedisStreamBatchContainer(StreamEntry streamEntry)
     {
         var streamNamespace = streamEntry.Values[0].Value;
         var steamKey = streamEntry.Values[1].Value;
@@ -49,7 +48,7 @@ public class RedisBatchContainer : IBatchContainer
         }
 
         StreamId = StreamId.Create(streamNamespace!, steamKey!);
-        SequenceToken = new RedisSequenceToken(streamEntry.Id);
+        SequenceToken = new RedisStreamSequenceToken(streamEntry.Id);
         EventType = eventType!;
         Data = data!;
     }
