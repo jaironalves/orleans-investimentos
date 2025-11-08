@@ -1,4 +1,5 @@
-﻿using Orleans.Streams;
+﻿using Orleans.Providers.Streams.Common;
+using Orleans.Streams;
 using StackExchange.Redis;
 using System.Text.Json;
 
@@ -24,37 +25,42 @@ public class RedisStreamBatchContainer : IBatchContainer
     public RedisStreamBatchContainer(StreamEntry streamEntry)
     {
         var streamNamespace = streamEntry.Values[0].Value;
-        var steamKey = streamEntry.Values[1].Value;
+        var streamKey = streamEntry.Values[1].Value;
         var eventType = streamEntry.Values[2].Value;
         var data = streamEntry.Values[3].Value;
-        StreamEntryId = streamEntry.Id.ToString() ?? throw new ArgumentNullException(nameof(streamEntry.Id));
 
-        // Check incoming data
-        if (string.IsNullOrWhiteSpace(streamNamespace))
-        {
-            throw new ArgumentNullException(nameof(streamNamespace));
-        }
-        if (string.IsNullOrWhiteSpace(steamKey))
-        {
-            throw new ArgumentNullException(nameof(steamKey));
-        }
-        if (string.IsNullOrWhiteSpace(eventType))
-        {
-            throw new ArgumentNullException(nameof(eventType));
-        }
-        if (string.IsNullOrWhiteSpace(data))
-        {
-            throw new ArgumentNullException(nameof(data));
-        }
+        ArgumentNullException.ThrowIfNullOrWhiteSpace(streamEntry.Id);
+        ArgumentNullException.ThrowIfNullOrWhiteSpace(streamNamespace);
+        ArgumentNullException.ThrowIfNullOrWhiteSpace(streamKey);
+        ArgumentNullException.ThrowIfNullOrWhiteSpace(eventType);
+        ArgumentNullException.ThrowIfNullOrWhiteSpace(data);
 
-        StreamId = StreamId.Create(streamNamespace!, steamKey!);
-        SequenceToken = new RedisStreamSequenceToken(streamEntry.Id);
+        StreamEntryId = streamEntry.Id.ToString();
+        StreamId = StreamId.Create(streamNamespace!, streamKey!);
+        SequenceToken = CreateStreamSequenceToken(streamEntry.Id);
         EventType = eventType!;
         Data = data!;
     }
+
+    public StreamSequenceToken CreateStreamSequenceToken(RedisValue id)
+    {        
+        var redisValueId = id.ToString();
+
+        var splitIndex = redisValueId.IndexOf('-');
+        if (splitIndex < 0)
+        {   
+            throw new ArgumentException(message: $"Invalid {nameof(id)}", paramName: nameof(id));
+        }
+
+        var sequenceNumber = long.Parse(redisValueId.AsSpan(0, splitIndex));
+        var eventIndex = int.Parse(redisValueId.AsSpan(splitIndex + 1));
+
+        return new EventSequenceTokenV2(sequenceNumber, eventIndex);
+    }
+
     public IEnumerable<Tuple<T, StreamSequenceToken>> GetEvents<T>()
     {
-        List<Tuple<T, StreamSequenceToken>> events = new();
+        List<Tuple<T, StreamSequenceToken>> events = [];
         var eventType = typeof(T).Name;
         if (eventType == EventType)
         {
@@ -79,7 +85,7 @@ public class RedisStreamBatchContainer : IBatchContainer
             NameValueEntry eventTypeEntry = new("eventType", @event!.GetType().Name);
             NameValueEntry dataEntry = new("data", JsonSerializer.Serialize(@event));
 
-            yield return [streamNamespaceEntry, streamKeyEntry, eventTypeEntry, dataEntry];            
+            yield return [streamNamespaceEntry, streamKeyEntry, eventTypeEntry, dataEntry];
         }
     }
 }
