@@ -1,4 +1,5 @@
 ﻿using Orleans.Investimentos.Silo.Streaming.Redis.Storage;
+using Orleans.Serialization;
 using Orleans.Streams;
 using StackExchange.Redis;
 
@@ -7,33 +8,38 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis;
 internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
 {
     private readonly RedisStreamOptions options;
-    private RedisStreamStorage? streamStorage;
+    private readonly Serializer<RedisStreamBatchContainer> serializer;
+    private RedisStreamStorage streamStorage;
     private readonly QueueId queueId;
     private readonly TimeProvider timeProvider;
     private readonly ILogger<RedisStreamAdapterReceiver> logger;
 
-    private Task? outstandingTask;
+    private Task outstandingTask;
     private string lastId = "$";
+    private long lastReadMessage;
+
     private DateTimeOffset lastTrimTime;
 
     internal static IQueueAdapterReceiver Create(RedisStreamOptions options,
-        RedisStreamStorage storage, QueueId queueId, TimeProvider timeProvider,
-        ILoggerFactory loggerFactory)
+        Serializer<RedisStreamBatchContainer> serializer, RedisStreamStorage storage,
+        QueueId queueId, TimeProvider timeProvider, ILoggerFactory loggerFactory)
     {
         if (queueId.IsDefault) throw new ArgumentNullException(nameof(queueId));
         ArgumentNullException.ThrowIfNull(timeProvider);
         ArgumentNullException.ThrowIfNull(loggerFactory);
 
-        return new RedisStreamAdapterReceiver(options, storage, queueId, timeProvider, loggerFactory.CreateLogger<RedisStreamAdapterReceiver>());
+        return new RedisStreamAdapterReceiver(options, serializer, storage, queueId, timeProvider, loggerFactory.CreateLogger<RedisStreamAdapterReceiver>());
     }
 
     private RedisStreamAdapterReceiver(
         RedisStreamOptions options,
-        RedisStreamStorage streamStorage,
+        Serializer<RedisStreamBatchContainer> serializer,
+        RedisStreamStorage streamStorage,        
         QueueId queueId, TimeProvider timeProvider,
         ILogger<RedisStreamAdapterReceiver> logger)
     {
         this.options = options;
+        this.serializer = serializer;
         this.streamStorage = streamStorage;
         this.queueId = queueId;
         this.timeProvider = timeProvider;
@@ -83,7 +89,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
             var streamMessages = await task;
 
             var messageBatch = streamMessages
-                .Select(streamEntry => new RedisStreamBatchContainer(streamEntry))
+                .Select(streamEntry => RedisStreamBatchContainer.FromStreamEntry(streamEntry, serializer, lastReadMessage++))
                 .ToList<IBatchContainer>();
 
             return messageBatch;

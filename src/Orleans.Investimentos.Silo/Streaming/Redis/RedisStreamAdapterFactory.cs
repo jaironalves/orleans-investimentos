@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Options;
 using Orleans.Configuration;
 using Orleans.Providers.Streams.Common;
+using Orleans.Serialization;
 using Orleans.Streams;
 
 namespace Orleans.Investimentos.Silo.Streaming.Redis;
@@ -9,6 +10,7 @@ public class RedisStreamAdapterFactory : IQueueAdapterFactory
 {
     private readonly RedisStreamServiceProvider provider;
     private readonly RedisStreamOptions options;
+    private readonly Serializer<RedisStreamBatchContainer> serializer;
     private readonly IStreamFailureHandler streamFailureHandler;
     private readonly IStreamQueueMapper streamQueueMapper;
     private readonly ILoggerFactory loggerFactory;
@@ -43,6 +45,9 @@ public class RedisStreamAdapterFactory : IQueueAdapterFactory
 
         options = provider.GetOptions<RedisStreamOptions>();
 
+        var providerSerializer = provider.GetRequiredService<Serializer>();
+        serializer = providerSerializer.GetSerializer<RedisStreamBatchContainer>();
+
         loggerFactory = provider.GetRequiredService<ILoggerFactory>();
         streamFailureHandler = new RedisStreamFailureHandler(loggerFactory.CreateLogger<RedisStreamFailureHandler>());
 
@@ -56,7 +61,7 @@ public class RedisStreamAdapterFactory : IQueueAdapterFactory
         var clusterOptions = provider.GetRequiredService<IOptions<ClusterOptions>>().Value;
 
         var queueAdapter = new RedisStreamAdapter(provider, options, clusterOptions,
-            connectionMultiplexer, streamQueueMapper, loggerFactory);
+            serializer, connectionMultiplexer, streamQueueMapper, loggerFactory);
 
         return queueAdapter;
     }

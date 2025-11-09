@@ -1,5 +1,6 @@
 ﻿using Orleans.Configuration;
 using Orleans.Investimentos.Silo.Streaming.Redis.Storage;
+using Orleans.Serialization;
 using Orleans.Streams;
 using StackExchange.Redis;
 using System.Collections.Concurrent;
@@ -12,6 +13,7 @@ public class RedisStreamAdapter : IQueueAdapter
     private readonly RedisStreamOptions options;
 
     private readonly ClusterOptions clusterOptions;
+    private readonly Serializer<RedisStreamBatchContainer> serializer;
     private readonly IConnectionMultiplexer connectionMultiplexer;        
     private readonly IStreamQueueMapper streamQueueMapper;
     private readonly ILoggerFactory loggerFactory;
@@ -21,6 +23,7 @@ public class RedisStreamAdapter : IQueueAdapter
     internal RedisStreamAdapter(RedisStreamServiceProvider provider,            
         RedisStreamOptions options,                        
         ClusterOptions clusterOptions,
+        Serializer<RedisStreamBatchContainer> serializer,
         IConnectionMultiplexer connectionMultiplexer,
         IStreamQueueMapper streamQueueMapper,
         ILoggerFactory loggerFactory)
@@ -28,6 +31,7 @@ public class RedisStreamAdapter : IQueueAdapter
         this.provider = provider;
         this.options = options;
         this.clusterOptions = clusterOptions;
+        this.serializer = serializer;
         this.connectionMultiplexer = connectionMultiplexer;
         this.streamQueueMapper = streamQueueMapper;
         this.loggerFactory = loggerFactory;            
@@ -42,7 +46,7 @@ public class RedisStreamAdapter : IQueueAdapter
     public IQueueAdapterReceiver CreateReceiver(QueueId queueId)
     {
         var storage = GetStorage(queueId);
-        return RedisStreamAdapterReceiver.Create(options, storage, queueId, TimeProvider.System, loggerFactory);
+        return RedisStreamAdapterReceiver.Create(options, serializer, storage, queueId, TimeProvider.System, loggerFactory);
     }
 
     private RedisStreamStorage GetStorage(QueueId queueId)
@@ -63,10 +67,16 @@ public class RedisStreamAdapter : IQueueAdapter
             streamStorage = StreamStorages.GetOrAdd(queueId, tmpStreamStorage);
         }
 
-        var entries = RedisStreamBatchContainer
-            .ToStreamEntries(streamId, events);
+        var streamEntry = RedisStreamBatchContainer
+            .ToStreamEntry(streamId, serializer, events, requestContext);
 
         await streamStorage
-            .AddEntriesAsync(entries);
+            .AddEntriesAsync([streamEntry]);
+
+        //var entries = RedisStreamBatchContainer
+        //    .ToStreamEntries(streamId, serializer, events);
+
+        //await streamStorage
+        //    .AddEntriesAsync(entries);
     }
 }

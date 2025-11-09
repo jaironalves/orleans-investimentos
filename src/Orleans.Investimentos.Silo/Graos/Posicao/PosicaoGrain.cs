@@ -83,7 +83,7 @@ internal class PosicaoGrain(
     public async Task OnNextAsync(AtivoPrecoStreamModel item, StreamSequenceToken? token = null)
     {
         posicaoState.State.Preco = item.Preco;
-        posicaoState.State.PrecoToken = token;
+        //posicaoState.State.PrecoToken = token;
         await posicaoState.WriteStateAsync();
     }
 
