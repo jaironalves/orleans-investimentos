@@ -15,8 +15,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
     private readonly ILogger<RedisStreamAdapterReceiver> logger;
 
     private Task outstandingTask;
-    private string lastId = "$";
-    private long lastReadMessage;
+    private string lastId = "$";    
 
     private DateTimeOffset lastTrimTime;
 
@@ -89,7 +88,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
             var streamMessages = await task;
 
             var messageBatch = streamMessages
-                .Select(streamEntry => RedisStreamBatchContainer.FromStreamEntry(streamEntry, serializer, lastReadMessage++))
+                .Select(streamEntry => RedisStreamBatchContainer.FromStreamEntry(streamEntry, serializer))
                 .ToList<IBatchContainer>();
 
             return messageBatch;
