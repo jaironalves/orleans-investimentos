@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
 using Orleans.Configuration;
+using Orleans.Streams;
 
 namespace Orleans.Investimentos.Silo.Streaming.Redis.Hosting.Configurator;
 
@@ -11,8 +12,7 @@ public class ClusterClientRedisStreamConfigurator : ClusterClientPersistentStrea
         clientBuilder
             .ConfigureServices(services =>
             {
-                RedisStreamAdapterFactory
-                    .AddKeyedServices(services, name)
+                services
                     .ConfigureNamedOptionForLogging<RedisStreamOptions>(name)
                     .ConfigureNamedOptionForLogging<HashRingStreamQueueMapperOptions>(name);
             });
@@ -29,5 +29,23 @@ public class ClusterClientRedisStreamConfigurator : ClusterClientPersistentStrea
     {
         this.Configure<HashRingStreamQueueMapperOptions>(ob => ob.Configure(options => options.TotalQueueCount = numOfparitions));
         return this;
+    }
+
+    public ClusterClientRedisStreamConfigurator ConfigureQueueDataAdapter(Func<IServiceProvider, string, IQueueDataAdapter<string, IBatchContainer>> factory)
+    {
+        this.ConfigureComponent(factory);
+        return this;
+    }
+
+    public ClusterClientRedisStreamConfigurator ConfigureQueueDataAdapter<TQueueDataAdapter>()
+        where TQueueDataAdapter : class, IQueueDataAdapter<string, IBatchContainer>
+    {
+        this.ConfigureComponent<IQueueDataAdapter<string, IBatchContainer>>((sp, n) => ActivatorUtilities.CreateInstance<TQueueDataAdapter>(sp));
+        return this;
+    }
+
+    internal void PostConfigureComponents()
+    {
+        ConfigureDelegate(services => RedisStreamAdapterFactory.PostConfigureDefaults(services, Name));
     }
 }

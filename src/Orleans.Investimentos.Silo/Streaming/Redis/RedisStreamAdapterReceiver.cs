@@ -8,37 +8,40 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis;
 internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
 {
     private readonly RedisStreamOptions options;
-    private readonly Serializer<RedisStreamBatchContainer> serializer;
+    private readonly IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter;
     private RedisStreamStorage streamStorage;
     private readonly QueueId queueId;
     private readonly TimeProvider timeProvider;
     private readonly ILogger<RedisStreamAdapterReceiver> logger;
 
+    private readonly List<PendingMessageAcknowledge> pendingMessages = [];
+
     private Task outstandingTask;
-    private string lastId = "$";    
+    private string lastId = "$";
+    private long lastSequenceId;
 
     private DateTimeOffset lastTrimTime;
 
     internal static IQueueAdapterReceiver Create(RedisStreamOptions options,
-        Serializer<RedisStreamBatchContainer> serializer, RedisStreamStorage storage,
+        IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter, RedisStreamStorage storage,
         QueueId queueId, TimeProvider timeProvider, ILoggerFactory loggerFactory)
     {
         if (queueId.IsDefault) throw new ArgumentNullException(nameof(queueId));
         ArgumentNullException.ThrowIfNull(timeProvider);
         ArgumentNullException.ThrowIfNull(loggerFactory);
 
-        return new RedisStreamAdapterReceiver(options, serializer, storage, queueId, timeProvider, loggerFactory.CreateLogger<RedisStreamAdapterReceiver>());
+        return new RedisStreamAdapterReceiver(options, dataAdapter, storage, queueId, timeProvider, loggerFactory.CreateLogger<RedisStreamAdapterReceiver>());
     }
 
     private RedisStreamAdapterReceiver(
         RedisStreamOptions options,
-        Serializer<RedisStreamBatchContainer> serializer,
-        RedisStreamStorage streamStorage,        
+        IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter,
+        RedisStreamStorage streamStorage,
         QueueId queueId, TimeProvider timeProvider,
         ILogger<RedisStreamAdapterReceiver> logger)
     {
         this.options = options;
-        this.serializer = serializer;
+        this.dataAdapter = dataAdapter;
         this.streamStorage = streamStorage;
         this.queueId = queueId;
         this.timeProvider = timeProvider;
@@ -71,7 +74,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
         }
     }
 
-    public async Task<IList<IBatchContainer>?> GetQueueMessagesAsync(int maxCount)
+    public async Task<IList<IBatchContainer>> GetQueueMessagesAsync(int maxCount)
     {
         try
         {
@@ -85,13 +88,22 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
             outstandingTask = task;
             lastId = ">";
 
-            var streamMessages = await task;
+            var streamEntries = await task;
 
-            var messageBatch = streamMessages
-                .Select(streamEntry => RedisStreamBatchContainer.FromStreamEntry(streamEntry, serializer))
-                .ToList<IBatchContainer>();
+            var messagesBatch = new List<IBatchContainer>();
+            foreach (var streamEntry in streamEntries)
+            {
+                var container = dataAdapter.FromQueueMessage(streamEntry, lastSequenceId++);
+                messagesBatch.Add(container);
 
-            return messageBatch;
+                pendingMessages.Add(new PendingMessageAcknowledge(streamEntry, container.SequenceToken));
+            }
+
+            //var messageBatch = streamEntries
+            //    .Select(streamEntry => dataAdapter.FromQueueMessage(streamEntry, lastSequenceId++))
+            //    .ToList();
+
+            return messagesBatch;
         }
         catch (Exception ex)
         {
@@ -125,7 +137,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
             }
             catch (Exception exc)
             {
-                LogWarningOperationException(logger, exc, nameof(streamStorageRef.EntryDeliveredAsync), queueId);
+                LogWarningOperationException(logger, exc, nameof(streamStorageRef.EntryAcknowledgeAsync), queueId);
             }
         }
         finally
@@ -142,15 +154,45 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
             if (messages.Count == 0 || streamStorageRef == null)
                 return;
 
-            List<RedisValue> streamEntryMessages = [.. messages.Cast<RedisStreamBatchContainer>().Select(b => b.StreamEntryId)];
-            outstandingTask = Task.WhenAll(streamEntryMessages.Select(streamStorageRef.EntryDeliveredAsync));
+            // get sequence tokens of delivered messages
+            var deliveredTokens = messages.Select(m => m.SequenceToken).ToList();
+
+            // find most recent (newest) delivered message token
+            StreamSequenceToken newestToken = deliveredTokens.Max();
+
+            // select all pending messages at or befor the oldest
+            var pendingMessagesToRemove = pendingMessages
+                .Where(pendingMessage => !pendingMessage.Token.Newer(newestToken))
+                .ToList();
+
+            if (pendingMessagesToRemove.Count == 0) 
+                return;
+
+            // remove all pending messages at or befor the oldest token from pending, regardless of if it was acknowledge or not.
+            foreach (var pendingMessage in pendingMessagesToRemove)
+                pendingMessages.Remove(pendingMessage);
+
+            // get the stream entries id for all messages deliveries that were delivered.
+            var pendingMessagesStreamEntriesId = pendingMessagesToRemove
+                .Where(pendingMessage => deliveredTokens.Contains(pendingMessage.Token))
+                .Select(pendingMessage => pendingMessage.StreamEntry.Id)
+                .ToList();
+
+            if (pendingMessagesStreamEntriesId.Count == 0) 
+                return;
+
+            // delete all delivered queue messages from the queue.  Anything finalized but not delivered will show back up later
+            //List<RedisValue> streamEntryMessages = [.. messages.Cast<IRedisStreamBatchContainer>().Select(b => b.StreamEntryId)];            
+
+            // Acknowledge all delivered messages.
+            outstandingTask = Task.WhenAll(pendingMessagesStreamEntriesId.Select(streamStorageRef.EntryAcknowledgeAsync));
             try
             {
                 await outstandingTask;
             }
             catch (Exception exc)
             {
-                LogWarningOperationException(logger, exc, nameof(streamStorageRef.EntryDeliveredAsync), queueId);
+                LogWarningOperationException(logger, exc, nameof(streamStorageRef.EntryAcknowledgeAsync), queueId);
             }
         }
         finally
@@ -164,4 +206,17 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
         Message = "Exception upon {Operation} on queue {QueueId}. Ignoring."
     )]
     private partial void LogWarningOperationException(ILogger logger, Exception exception, string operation, QueueId queueId);
+
+    private record PendingMessageAcknowledge
+    {
+        public PendingMessageAcknowledge(StreamEntry streamEntry, StreamSequenceToken token)
+        {
+            Token = token;
+            StreamEntry = streamEntry;
+        }
+
+        public StreamEntry StreamEntry { get; }
+
+        public StreamSequenceToken Token { get; }
+    }
 }

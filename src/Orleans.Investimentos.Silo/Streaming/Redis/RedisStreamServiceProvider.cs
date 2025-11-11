@@ -6,10 +6,15 @@ internal class RedisStreamServiceProvider(IServiceProvider serviceProvider, stri
 {
     public string Name => name;
 
-    public object? GetService(Type serviceType)
+    public object GetService(Type serviceType)
     {
         return serviceProvider.GetService(serviceType);
-    }        
+    }
+
+    public TService GetComponentService<TService>() where TService : notnull
+    {
+        return serviceProvider.GetRequiredKeyedService<TService>(Name);        
+    }
 
     public TOption GetOptions<TOption>()
         where TOption : class, new()

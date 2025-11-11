@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Orleans.Configuration;
 using Orleans.Streams;
 
@@ -6,13 +7,18 @@ namespace Orleans.Investimentos.Silo.Streaming.Redis.Hosting.Configurator;
 
 public class SiloRedisStreamConfigurator : SiloPersistentStreamConfigurator
 {
-    public SiloRedisStreamConfigurator(string name, Action<Action<IServiceCollection>> configureDelegate) : 
+    public SiloRedisStreamConfigurator(string name, Action<Action<IServiceCollection>> configureDelegate) :
         base(name, configureDelegate, RedisStreamAdapterFactory.Create)
     {
+        //this.ConfigureComponent(RedisStreamAdapterFactory.Create);
+
+        //this.ConfigureComponent((sp, providerName) => new RedisStreamServiceProvider(sp, providerName));
+
         ConfigureDelegate(services =>
         {
-            RedisStreamAdapterFactory
-                .AddKeyedServices(services, name)
+            //RedisStreamAdapterFactory
+            //    .AddKeyedServices(services, name)
+            services
                 .ConfigureNamedOptionForLogging<RedisStreamOptions>(name)
                 .ConfigureNamedOptionForLogging<SimpleQueueCacheOptions>(name)
                 .ConfigureNamedOptionForLogging<HashRingStreamQueueMapperOptions>(name);
@@ -35,5 +41,23 @@ public class SiloRedisStreamConfigurator : SiloPersistentStreamConfigurator
     {
         this.Configure<HashRingStreamQueueMapperOptions>(ob => ob.Configure(options => options.TotalQueueCount = numOfparitions));
         return this;
+    }
+
+    public SiloRedisStreamConfigurator ConfigureQueueDataAdapter(Func<IServiceProvider, string, IQueueDataAdapter<string, IBatchContainer>> factory)
+    {
+        this.ConfigureComponent(factory);
+        return this;
+    }
+
+    public SiloRedisStreamConfigurator ConfigureQueueDataAdapter<TQueueDataAdapter>()
+        where TQueueDataAdapter : class, IQueueDataAdapter<string, IBatchContainer>
+    {
+        this.ConfigureComponent<IQueueDataAdapter<string, IBatchContainer>>((sp, n) => ActivatorUtilities.CreateInstance<TQueueDataAdapter>(sp));
+        return this;
+    }
+
+    internal void PostConfigureComponents()
+    {
+        ConfigureDelegate(services => RedisStreamAdapterFactory.PostConfigureDefaults(services, Name));
     }
 }

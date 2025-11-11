@@ -10,8 +10,7 @@ public static class ClientBuilderExtensions
     /// </summary>
     public static IClientBuilder AddRedisStreams(this IClientBuilder builder, string name, Action<RedisStreamOptions> configureOptions)
     {
-        builder.AddRedisStreams(name, cb =>
-            cb.ConfigureRedis(ob => ob.Configure(configureOptions)));
+        builder.AddRedisStreams(name, ob => ob.Configure(configureOptions));
         return builder;
     }
 
@@ -32,6 +31,7 @@ public static class ClientBuilderExtensions
     {
         var configurator = new ClusterClientRedisStreamConfigurator(name, builder);
         configure?.Invoke(configurator);
+        configurator.PostConfigureComponents();
         return builder;
     }
 }

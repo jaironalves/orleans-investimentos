@@ -1,8 +1,11 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Orleans.Configuration;
 using Orleans.Providers.Streams.Common;
 using Orleans.Serialization;
 using Orleans.Streams;
+using StackExchange.Redis;
+using System.Xml.Linq;
 
 namespace Orleans.Investimentos.Silo.Streaming.Redis;
 
@@ -10,34 +13,43 @@ public class RedisStreamAdapterFactory : IQueueAdapterFactory
 {
     private readonly RedisStreamServiceProvider provider;
     private readonly RedisStreamOptions options;
-    private readonly Serializer<RedisStreamBatchContainer> serializer;
+    private readonly IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter;
     private readonly IStreamFailureHandler streamFailureHandler;
     private readonly IStreamQueueMapper streamQueueMapper;
     private readonly ILoggerFactory loggerFactory;
 
-    public static IQueueAdapterFactory Create(IServiceProvider provider, string providerName)
+    public static IQueueAdapterFactory Create(IServiceProvider serviceProvider, string providerName)
     {
-        var factory = provider.GetRequiredKeyedService<RedisStreamAdapterFactory>(providerName);
-        return factory;
+        var redisStreamServiceProvider = new RedisStreamServiceProvider(serviceProvider, providerName);
+        var redisStreamAdapterFactory = new RedisStreamAdapterFactory(redisStreamServiceProvider);
+        return redisStreamAdapterFactory;
     }
 
-    public static IServiceCollection AddKeyedServices(IServiceCollection services, string providerName)
+    public static IServiceCollection PostConfigureDefaults(IServiceCollection services, string providerName)
     {
-        services
-            .AddKeyedSingleton(providerName, (sp, serviceKey) =>
-            {
-                var providerNameKey = $"{serviceKey}";
-                return new RedisStreamServiceProvider(sp, providerNameKey);
-            })
-            .AddKeyedSingleton(providerName, (sp, serviceKey) =>
-            {
-                var providerNameKey = $"{serviceKey}";
-                var provider = sp.GetRequiredKeyedService<RedisStreamServiceProvider>(providerNameKey);
-                return new RedisStreamAdapterFactory(provider);
-            });
+        services.
+            TryAddKeyedSingleton<IQueueDataAdapter<StreamEntry, IBatchContainer>, RedisStreamDataAdapter>(providerName);
 
         return services;
     }
+
+    //public static IServiceCollection AddKeyedServices(IServiceCollection services, string providerName)
+    //{
+    //    services
+    //        .AddKeyedSingleton(providerName, (sp, serviceKey) =>
+    //        {
+    //            var providerNameKey = $"{serviceKey}";
+    //            return new RedisStreamServiceProvider(sp, providerNameKey);
+    //        })
+    //        .AddKeyedSingleton(providerName, (sp, serviceKey) =>
+    //        {
+    //            var providerNameKey = $"{serviceKey}";
+    //            var provider = sp.GetRequiredKeyedService<RedisStreamServiceProvider>(providerNameKey);
+    //            return new RedisStreamAdapterFactory(provider);
+    //        });
+
+    //    return services;
+    //}
 
     private RedisStreamAdapterFactory(RedisStreamServiceProvider provider)
     {
@@ -45,8 +57,7 @@ public class RedisStreamAdapterFactory : IQueueAdapterFactory
 
         options = provider.GetOptions<RedisStreamOptions>();
 
-        var providerSerializer = provider.GetRequiredService<Serializer>();
-        serializer = providerSerializer.GetSerializer<RedisStreamBatchContainer>();
+        dataAdapter = provider.GetComponentService<IQueueDataAdapter<StreamEntry, IBatchContainer>>();
 
         loggerFactory = provider.GetRequiredService<ILoggerFactory>();
         streamFailureHandler = new RedisStreamFailureHandler(loggerFactory.CreateLogger<RedisStreamFailureHandler>());
@@ -61,7 +72,7 @@ public class RedisStreamAdapterFactory : IQueueAdapterFactory
         var clusterOptions = provider.GetRequiredService<IOptions<ClusterOptions>>().Value;
 
         var queueAdapter = new RedisStreamAdapter(provider, options, clusterOptions,
-            serializer, connectionMultiplexer, streamQueueMapper, loggerFactory);
+            dataAdapter, connectionMultiplexer, streamQueueMapper, loggerFactory);
 
         return queueAdapter;
     }
