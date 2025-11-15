@@ -112,6 +112,19 @@ public static class OrleansExtensions
                        };
                    });
 
+
+                silo
+                     .Services.AddOptions<RedisReminderTableOptions>()
+                     .Configure<IServiceProvider>((options, sp) =>
+                     {
+                         var connectionMultiplexer = sp.GetRequiredService<IConnectionMultiplexer>();
+                         options.CreateMultiplexer = (_) => Task.FromResult(connectionMultiplexer);
+                         options.ConfigurationOptions = redisOptions;
+                     });
+
+                silo.UseRedisReminderService(opt => { });
+
+
                 //silo
                   //.AddMemoryStreams("AtivoPrecoStream")
                   //.AddMemoryGrainStorage("PubSubStore");

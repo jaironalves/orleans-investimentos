@@ -5,6 +5,7 @@ using Orleans.Investimentos.ServiceDefaults;
 using Orleans.Investimentos.Silo.Abstractions.Graos.Ativo;
 using Orleans.Investimentos.Silo.Abstractions.Graos.InvestidorRv;
 using Orleans.Investimentos.Silo.Abstractions.Graos.Posicao;
+using Orleans.Investimentos.Silo.Abstractions.Graos.Worker;
 using Orleans.Investimentos.Silo.Extensions;
 using Orleans.Investimentos.Silo.Models;
 
@@ -38,6 +39,37 @@ app.UseHttpsRedirection();
 app.MapDefaultEndpoints();
 
 app.Map("/dashboard", x => x.UseOrleansDashboard());
+
+
+app.MapPost("/worker-notificar", async (IGrainFactory grainFactory) =>
+{
+    var itens = Enumerable.Range(10000, 15000).Select(i => i.ToString()).ToList();
+
+    await Parallel.ForEachAsync(itens, async (item, ct) =>
+    {
+        var gerenciadorWorkerGrain = grainFactory.GetGrain<IGerenciadorWorkerGrain>(item);
+        await gerenciadorWorkerGrain.NotificarAsync(DateOnly.FromDateTime(DateTime.Now));
+    });
+    
+    return Results.Ok();
+})
+.WithName("PostWorkerNotificar")
+.WithOpenApi();
+
+app.MapPost("/worker-agendar", async (IGrainFactory grainFactory) =>
+{
+    var itens = Enumerable.Range(1, 30).Select(i => i.ToString()).ToList();
+
+    await Parallel.ForEachAsync(itens, async (item, ct) =>
+    {
+        var gerenciadorWorkerGrain = grainFactory.GetGrain<IParticaoWorkerGrain>(item);
+        await gerenciadorWorkerGrain.AgendarAsync();
+    });
+
+    return Results.Ok();
+})
+.WithName("PostWorkerAgendar")
+.WithOpenApi();
 
 app.MapPost("/investidor-rv", async (IGrainFactory grainFactory) =>
 {    

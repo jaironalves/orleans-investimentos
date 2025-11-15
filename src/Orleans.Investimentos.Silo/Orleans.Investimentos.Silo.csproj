@@ -17,6 +17,7 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.15" />
     <PackageReference Include="Microsoft.Orleans.Clustering.Redis" Version="9.2.1" />
     <PackageReference Include="Microsoft.Orleans.Persistence.Redis" Version="9.2.1" />
+    <PackageReference Include="Microsoft.Orleans.Reminders.Redis" Version="9.2.1" />
     <PackageReference Include="Microsoft.Orleans.Server" Version="9.2.1" />
     <PackageReference Include="Microsoft.Orleans.Streaming" Version="9.2.1" />
     <PackageReference Include="OrleansDashboard" Version="8.2.0" />
