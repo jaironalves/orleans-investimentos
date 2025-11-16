@@ -2,10 +2,8 @@
 using Microsoft.Extensions.Options;
 using Orleans.Configuration;
 using Orleans.Providers.Streams.Common;
-using Orleans.Serialization;
 using Orleans.Streams;
 using StackExchange.Redis;
-using System.Xml.Linq;
 
 namespace Orleans.Investimentos.Silo.Streaming.Redis;
 
@@ -31,25 +29,7 @@ public class RedisStreamAdapterFactory : IQueueAdapterFactory
             TryAddKeyedSingleton<IQueueDataAdapter<StreamEntry, IBatchContainer>, RedisStreamDataAdapter>(providerName);
 
         return services;
-    }
-
-    //public static IServiceCollection AddKeyedServices(IServiceCollection services, string providerName)
-    //{
-    //    services
-    //        .AddKeyedSingleton(providerName, (sp, serviceKey) =>
-    //        {
-    //            var providerNameKey = $"{serviceKey}";
-    //            return new RedisStreamServiceProvider(sp, providerNameKey);
-    //        })
-    //        .AddKeyedSingleton(providerName, (sp, serviceKey) =>
-    //        {
-    //            var providerNameKey = $"{serviceKey}";
-    //            var provider = sp.GetRequiredKeyedService<RedisStreamServiceProvider>(providerNameKey);
-    //            return new RedisStreamAdapterFactory(provider);
-    //        });
-
-    //    return services;
-    //}
+    }    
 
     private RedisStreamAdapterFactory(RedisStreamServiceProvider provider)
     {

@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using Orleans.Configuration;
 using Orleans.Streams;
 
@@ -10,14 +9,8 @@ public class SiloRedisStreamConfigurator : SiloPersistentStreamConfigurator
     public SiloRedisStreamConfigurator(string name, Action<Action<IServiceCollection>> configureDelegate) :
         base(name, configureDelegate, RedisStreamAdapterFactory.Create)
     {
-        //this.ConfigureComponent(RedisStreamAdapterFactory.Create);
-
-        //this.ConfigureComponent((sp, providerName) => new RedisStreamServiceProvider(sp, providerName));
-
         ConfigureDelegate(services =>
-        {
-            //RedisStreamAdapterFactory
-            //    .AddKeyedServices(services, name)
+        {   
             services
                 .ConfigureNamedOptionForLogging<RedisStreamOptions>(name)
                 .ConfigureNamedOptionForLogging<SimpleQueueCacheOptions>(name)

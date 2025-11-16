@@ -1,6 +1,5 @@
 ﻿using Orleans.Configuration;
 using Orleans.Investimentos.Silo.Streaming.Redis.Storage;
-using Orleans.Serialization;
 using Orleans.Streams;
 using StackExchange.Redis;
 using System.Collections.Concurrent;
@@ -14,14 +13,14 @@ public class RedisStreamAdapter : IQueueAdapter
 
     private readonly ClusterOptions clusterOptions;
     private readonly IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter;
-    private readonly IConnectionMultiplexer connectionMultiplexer;        
+    private readonly IConnectionMultiplexer connectionMultiplexer;
     private readonly IStreamQueueMapper streamQueueMapper;
     private readonly ILoggerFactory loggerFactory;
 
     private readonly ConcurrentDictionary<QueueId, RedisStreamStorage> StreamStorages = new();
 
-    internal RedisStreamAdapter(RedisStreamServiceProvider provider,            
-        RedisStreamOptions options,                        
+    internal RedisStreamAdapter(RedisStreamServiceProvider provider,
+        RedisStreamOptions options,
         ClusterOptions clusterOptions,
         IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter,
         IConnectionMultiplexer connectionMultiplexer,
@@ -34,7 +33,7 @@ public class RedisStreamAdapter : IQueueAdapter
         this.dataAdapter = dataAdapter;
         this.connectionMultiplexer = connectionMultiplexer;
         this.streamQueueMapper = streamQueueMapper;
-        this.loggerFactory = loggerFactory;            
+        this.loggerFactory = loggerFactory;
     }
 
     public string Name => provider.Name;
@@ -67,19 +66,10 @@ public class RedisStreamAdapter : IQueueAdapter
             streamStorage = StreamStorages.GetOrAdd(queueId, tmpStreamStorage);
         }
 
-        //var streamEntry = RedisStreamBatchContainer
-        //    .ToStreamEntry(streamId, serializer, events, requestContext);
-
         var streamEntry = dataAdapter
             .ToQueueMessage(streamId, events, token, requestContext);
 
         await streamStorage
             .AddEntryAsync(streamEntry);
-
-        //var entries = RedisStreamBatchContainer
-        //    .ToStreamEntries(streamId, serializer, events);
-
-        //await streamStorage
-        //    .AddEntriesAsync(entries);
     }
 }

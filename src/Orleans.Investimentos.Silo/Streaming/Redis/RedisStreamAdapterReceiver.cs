@@ -97,11 +97,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
                 messagesBatch.Add(container);
 
                 pendingMessages.Add(new PendingMessageAcknowledge(streamEntry, container.SequenceToken));
-            }
-
-            //var messageBatch = streamEntries
-            //    .Select(streamEntry => dataAdapter.FromQueueMessage(streamEntry, lastSequenceId++))
-            //    .ToList();
+            }           
 
             return messagesBatch;
         }
@@ -160,7 +156,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
             // find most recent (newest) delivered message token
             StreamSequenceToken newestToken = deliveredTokens.Max();
 
-            // select all pending messages at or befor the oldest
+            // select all pending messages at or befor the newest delivered token
             var pendingMessagesToRemove = pendingMessages
                 .Where(pendingMessage => !pendingMessage.Token.Newer(newestToken))
                 .ToList();
@@ -179,10 +175,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
                 .ToList();
 
             if (pendingMessagesStreamEntriesId.Count == 0) 
-                return;
-
-            // delete all delivered queue messages from the queue.  Anything finalized but not delivered will show back up later
-            //List<RedisValue> streamEntryMessages = [.. messages.Cast<IRedisStreamBatchContainer>().Select(b => b.StreamEntryId)];            
+                return;            
 
             // Acknowledge all delivered messages.
             outstandingTask = Task.WhenAll(pendingMessagesStreamEntriesId.Select(streamStorageRef.EntryAcknowledgeAsync));

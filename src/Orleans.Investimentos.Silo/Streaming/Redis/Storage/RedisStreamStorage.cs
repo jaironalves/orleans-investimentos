@@ -43,22 +43,7 @@ internal partial class RedisStreamStorage(IConnectionMultiplexer connectionMulti
         }
 
         return new StreamEntry(id, entry.Values);
-    }
-
-    public async Task AddEntriesAsync(IEnumerable<NameValueEntry[]> entries)
-    {
-        try
-        {
-            foreach (var entryValues in entries)
-            {
-                await database.StreamAddAsync(streamKey, entryValues);
-            }
-        }
-        catch (Exception exc)
-        {
-            ReportErrorAndRethrow(exc, nameof(AddEntriesAsync));
-        }
-    }
+    }    
 
     public async Task<IEnumerable<StreamEntry>> GetEntriesAsync(RedisValue? position = null, int? count = null)
     {
@@ -85,7 +70,6 @@ internal partial class RedisStreamStorage(IConnectionMultiplexer connectionMulti
             ReportErrorAndRethrow(exc, nameof(EntryAcknowledgeAsync));
         }
     }
-
 
     public async Task TrimAsync(int maxLength, bool useApproximateMaxLength)
     {

@@ -47,7 +47,7 @@ namespace Orleans.Investimentos.Silo.Graos.Worker
         {
             //logger.LogInformation("Iniciando {Grain} tarefa para CorrelationId: {correlationId} na data: {data}", this.GetPrimaryKeyString(), correlationId, data);
             var random = new Random();
-            var delay = random.Next(100, 500);
+            var delay = random.Next(500, 1000);
             await Task.Delay(delay);
             //logger.LogInformation("Tarefa {Grain} concluída para CorrelationId: {correlationId} na data: {data}", this.GetPrimaryKeyString(), correlationId, data);
         }

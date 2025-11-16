@@ -57,30 +57,3 @@ public class RedisStreamDataAdapter(Serializer serializer) : IQueueDataAdapter<S
         return new StreamEntry(RedisValue.Null, [namespaceEntry, keyEntry, dataEntry ]);
     }
 }
-
-public class RedisStreamDataAdapterV2 : IQueueDataAdapter<string, IBatchContainer>, IOnDeserialized
-{
-    private Serializer<RedisStreamBatchContainer> serializer;
-
-    public RedisStreamDataAdapterV2(Serializer serializer)
-    {
-        this.serializer = serializer.GetSerializer<RedisStreamBatchContainer>();
-    }
-
-    public IBatchContainer FromQueueMessage(string queueMessage, long sequenceId)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void OnDeserialized(DeserializationContext context)
-    {
-        throw new NotImplementedException();
-    }
-
-    public string ToQueueMessage<T>(StreamId streamId, IEnumerable<T> events, StreamSequenceToken token, Dictionary<string, object> requestContext)
-    {
-        var redisStreamBatchContainer = new RedisStreamBatchContainer(streamId, [.. events.Cast<object>()], requestContext);
-        var rawBytes = serializer.SerializeToArray(redisStreamBatchContainer);
-        return Convert.ToBase64String(rawBytes);
-    }
-}
