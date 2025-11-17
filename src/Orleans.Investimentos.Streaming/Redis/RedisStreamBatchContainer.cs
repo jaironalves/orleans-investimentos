@@ -1,9 +1,8 @@
 ﻿using Orleans.Providers.Streams.Common;
-using Orleans.Serialization;
+using Orleans.Runtime;
 using Orleans.Streams;
-using StackExchange.Redis;
 
-namespace Orleans.Investimentos.Silo.Streaming.Redis;
+namespace Orleans.Investimentos.Streaming.Redis;
 
 [GenerateSerializer]
 [Alias(nameof(RedisStreamBatchContainer))]
@@ -26,6 +25,11 @@ internal class RedisStreamBatchContainer : IBatchContainer
 
     internal EventSequenceTokenV2 RealSequenceToken
     {
+        get
+        {
+            sequenceTokenV2 ??= (EventSequenceTokenV2)SequenceToken;
+            return sequenceTokenV2;
+        }
         set
         {
             sequenceTokenV2 = value;
@@ -46,7 +50,7 @@ internal class RedisStreamBatchContainer : IBatchContainer
     {
         return Events
             .OfType<T>()
-            .Select((e, i) => Tuple.Create<T, StreamSequenceToken>(e, sequenceTokenV2.CreateSequenceTokenForEvent(i)));
+            .Select((e, i) => Tuple.Create<T, StreamSequenceToken>(e, RealSequenceToken.CreateSequenceTokenForEvent(i)));
     }
 
     public bool ImportRequestContext()

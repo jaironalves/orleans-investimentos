@@ -3,7 +3,7 @@ using Orleans.Streams;
 using StackExchange.Redis;
 using System.Text;
 
-namespace Orleans.Investimentos.Silo.Streaming.Redis;
+namespace Orleans.Investimentos.Streaming.Redis;
 
 /// <summary>
 /// Options for Redis streaming.
@@ -19,7 +19,7 @@ public class RedisStreamOptions
     /// <summary>
     /// The delegate used to create a Redis connection multiplexer.
     /// </summary>
-    public Func<IServiceProvider, RedisStreamOptions, Task<IConnectionMultiplexer>> CreateMultiplexer { get; set; } = DefaultCreateMultiplexer;
+    public Func<RedisStreamOptions, Task<IConnectionMultiplexer>> CreateMultiplexer { get; set; } = DefaultCreateMultiplexer;
 
     /// <summary>
     /// Gets the Redis key for the provided QueueId. If not set, the default implementation will be used, which is equivalent to <c>{ServiceId}/streams/{queueId}</c>.
@@ -41,7 +41,7 @@ public class RedisStreamOptions
     /// <summary>
     /// The default multiplexer creation delegate.
     /// </summary>
-    public static async Task<IConnectionMultiplexer> DefaultCreateMultiplexer(IServiceProvider _, RedisStreamOptions options)
+    public static async Task<IConnectionMultiplexer> DefaultCreateMultiplexer(RedisStreamOptions options)
     {
         return await ConnectionMultiplexer.ConnectAsync(options.ConfigurationOptions);
     }

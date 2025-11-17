@@ -12,4 +12,11 @@ var silo = builder
         .WithExternalHttpEndpoints()
         .WithHttpHealthCheck("/health");
 
+builder
+    .AddProject<Projects.Orleans_Investimentos_Client>("orleans-investimentos-client")
+    .WithReference(siloRedis)
+    .WithReplicas(1)
+    .WithExternalHttpEndpoints()
+    .WithHttpHealthCheck("/health");
+
 builder.Build().Run();

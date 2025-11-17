@@ -1,7 +1,8 @@
 ﻿using Microsoft.Extensions.Options;
-using Orleans.Investimentos.Silo.Streaming.Redis.Hosting.Configurator;
+using Orleans.Hosting;
+using Orleans.Investimentos.Streaming.Redis.Hosting.Configurator;
 
-namespace Orleans.Investimentos.Silo.Streaming.Redis.Hosting;
+namespace Orleans.Investimentos.Streaming.Redis.Hosting;
 
 public static class ClientBuilderExtensions
 {   

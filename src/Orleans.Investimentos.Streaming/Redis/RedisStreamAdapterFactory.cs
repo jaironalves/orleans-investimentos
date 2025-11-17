@@ -1,11 +1,13 @@
-﻿using Microsoft.Extensions.DependencyInjection.Extensions;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orleans.Configuration;
 using Orleans.Providers.Streams.Common;
 using Orleans.Streams;
 using StackExchange.Redis;
 
-namespace Orleans.Investimentos.Silo.Streaming.Redis;
+namespace Orleans.Investimentos.Streaming.Redis;
 
 public class RedisStreamAdapterFactory : IQueueAdapterFactory
 {
@@ -48,7 +50,7 @@ public class RedisStreamAdapterFactory : IQueueAdapterFactory
 
     public async Task<IQueueAdapter> CreateAdapter()
     {
-        var connectionMultiplexer = await options.CreateMultiplexer(provider, options);
+        var connectionMultiplexer = await options.CreateMultiplexer(options);
         var clusterOptions = provider.GetRequiredService<IOptions<ClusterOptions>>().Value;
 
         var queueAdapter = new RedisStreamAdapter(provider, options, clusterOptions,

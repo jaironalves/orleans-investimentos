@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Orleans.Investimentos.Client\Orleans.Investimentos.Client.csproj" />
     <ProjectReference Include="..\..\src\Orleans.Investimentos.Silo\Orleans.Investimentos.Silo.csproj" />
   </ItemGroup>
 

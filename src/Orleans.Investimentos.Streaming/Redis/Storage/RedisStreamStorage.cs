@@ -1,7 +1,8 @@
-﻿using StackExchange.Redis;
+﻿using Microsoft.Extensions.Logging;
+using StackExchange.Redis;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Orleans.Investimentos.Silo.Streaming.Redis.Storage;
+namespace Orleans.Investimentos.Streaming.Redis.Storage;
 
 internal partial class RedisStreamStorage(IConnectionMultiplexer connectionMultiplexer,
     RedisKey streamKey, string streamName, ILoggerFactory loggerFactory)

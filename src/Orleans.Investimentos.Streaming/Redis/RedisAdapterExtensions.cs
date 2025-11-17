@@ -1,7 +1,6 @@
-﻿using Orleans.Serialization;
-using StackExchange.Redis;
+﻿using Orleans.Hosting;
 
-namespace Orleans.Investimentos.Silo.Streaming.Redis
+namespace Orleans.Investimentos.Streaming.Redis
 {
     public static class RedisAdapterExtensions
     {

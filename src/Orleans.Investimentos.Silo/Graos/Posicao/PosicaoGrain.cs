@@ -3,7 +3,6 @@ using Orleans.Investimentos.Silo.Abstractions.Graos.Ativo.Models;
 using Orleans.Investimentos.Silo.Abstractions.Graos.Posicao;
 using Orleans.Investimentos.Silo.Abstractions.Graos.Posicao.Models;
 using Orleans.Investimentos.Silo.Graos.Posicao.States;
-using Orleans.Investimentos.Silo.Streaming.Redis;
 using Orleans.Metadata;
 using Orleans.Streams;
 

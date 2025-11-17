@@ -1,7 +1,8 @@
 ﻿using Microsoft.Extensions.Options;
-using Orleans.Investimentos.Silo.Streaming.Redis.Hosting.Configurator;
+using Orleans.Hosting;
+using Orleans.Investimentos.Streaming.Redis.Hosting.Configurator;
 
-namespace Orleans.Investimentos.Silo.Streaming.Redis.Hosting;
+namespace Orleans.Investimentos.Streaming.Redis.Hosting;
 
 public static class SiloBuilderExtensions
 {
@@ -30,11 +31,8 @@ public static class SiloBuilderExtensions
     /// </summary>
     public static ISiloBuilder AddRedisStreams(this ISiloBuilder builder, string name, Action<SiloRedisStreamConfigurator> configure)
     {
-        var configurator = new SiloRedisStreamConfigurator(name,
-            configureServicesDelegate => builder.ConfigureServices(configureServicesDelegate));
-
+        var configurator = new SiloRedisStreamConfigurator(name, builder);
         configure?.Invoke(configurator);
-
         configurator.PostConfigureComponents();
 
         return builder;

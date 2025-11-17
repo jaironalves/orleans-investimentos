@@ -1,16 +1,18 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Orleans.Configuration;
+using Orleans.Hosting;
 using Orleans.Streams;
 
-namespace Orleans.Investimentos.Silo.Streaming.Redis.Hosting.Configurator;
+namespace Orleans.Investimentos.Streaming.Redis.Hosting.Configurator;
 
 public class SiloRedisStreamConfigurator : SiloPersistentStreamConfigurator
 {
-    public SiloRedisStreamConfigurator(string name, Action<Action<IServiceCollection>> configureDelegate) :
-        base(name, configureDelegate, RedisStreamAdapterFactory.Create)
+    public SiloRedisStreamConfigurator(string name, ISiloBuilder siloBuilder) :
+        base(name, configureDelegate => siloBuilder.ConfigureServices(configureDelegate), RedisStreamAdapterFactory.Create)
     {
         ConfigureDelegate(services =>
-        {   
+        {
             services
                 .ConfigureNamedOptionForLogging<RedisStreamOptions>(name)
                 .ConfigureNamedOptionForLogging<SimpleQueueCacheOptions>(name)

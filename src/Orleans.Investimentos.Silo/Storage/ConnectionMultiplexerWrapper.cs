@@ -111,4 +111,7 @@ public class ConnectionMultiplexerWrapper(IConnectionMultiplexer inner, int? def
     void IConnectionMultiplexer.Wait(Task task) => inner.Wait(task);
     T IConnectionMultiplexer.Wait<T>(Task<T> task) => inner.Wait(task);
     void IConnectionMultiplexer.WaitAll(params Task[] tasks) => inner.WaitAll(tasks);
+
+    public IServer GetServer(RedisKey key, object asyncState = null, CommandFlags flags = CommandFlags.None) =>
+        inner.GetServer(key, asyncState, flags);
 }

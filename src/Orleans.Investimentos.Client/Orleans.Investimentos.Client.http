@@ -1,0 +1,6 @@
+@Orleans.Investimentos.Client_HostAddress = http://localhost:5207
+
+GET {{Orleans.Investimentos.Client_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

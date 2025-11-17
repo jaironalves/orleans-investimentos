@@ -1,6 +1,7 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
-namespace Orleans.Investimentos.Silo.Streaming.Redis;
+namespace Orleans.Investimentos.Streaming.Redis;
 
 internal class RedisStreamServiceProvider(IServiceProvider serviceProvider, string name) : IServiceProvider
 {

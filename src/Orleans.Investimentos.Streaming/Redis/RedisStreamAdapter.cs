@@ -1,10 +1,12 @@
-﻿using Orleans.Configuration;
-using Orleans.Investimentos.Silo.Streaming.Redis.Storage;
+﻿using Microsoft.Extensions.Logging;
+using Orleans.Configuration;
+using Orleans.Investimentos.Streaming.Redis.Storage;
+using Orleans.Runtime;
 using Orleans.Streams;
 using StackExchange.Redis;
 using System.Collections.Concurrent;
 
-namespace Orleans.Investimentos.Silo.Streaming.Redis;
+namespace Orleans.Investimentos.Streaming.Redis;
 
 public class RedisStreamAdapter : IQueueAdapter
 {
@@ -59,7 +61,7 @@ public class RedisStreamAdapter : IQueueAdapter
     {
         var queueId = streamQueueMapper.GetQueueForStream(streamId);
 
-        if (!StreamStorages.TryGetValue(queueId, out RedisStreamStorage? streamStorage))
+        if (!StreamStorages.TryGetValue(queueId, out RedisStreamStorage streamStorage))
         {
             var tmpStreamStorage = GetStorage(queueId);
             await tmpStreamStorage.InitAsync();

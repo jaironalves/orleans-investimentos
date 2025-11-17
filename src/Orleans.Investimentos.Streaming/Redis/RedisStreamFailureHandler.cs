@@ -1,6 +1,8 @@
-﻿using Orleans.Streams;
+﻿using Microsoft.Extensions.Logging;
+using Orleans.Runtime;
+using Orleans.Streams;
 
-namespace Orleans.Investimentos.Silo.Streaming.Redis;
+namespace Orleans.Investimentos.Streaming.Redis;
 
 public class RedisStreamFailureHandler(ILogger<RedisStreamFailureHandler> logger) : IStreamFailureHandler
 {

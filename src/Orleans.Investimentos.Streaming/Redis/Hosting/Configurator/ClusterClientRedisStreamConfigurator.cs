@@ -1,21 +1,22 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Orleans.Configuration;
+using Orleans.Hosting;
 using Orleans.Streams;
 
-namespace Orleans.Investimentos.Silo.Streaming.Redis.Hosting.Configurator;
+namespace Orleans.Investimentos.Streaming.Redis.Hosting.Configurator;
 
 public class ClusterClientRedisStreamConfigurator : ClusterClientPersistentStreamConfigurator
 {
     public ClusterClientRedisStreamConfigurator(string name, IClientBuilder clientBuilder)
         : base(name, clientBuilder, RedisStreamAdapterFactory.Create)
     {
-        clientBuilder
-            .ConfigureServices(services =>
-            {
-                services
-                    .ConfigureNamedOptionForLogging<RedisStreamOptions>(name)
-                    .ConfigureNamedOptionForLogging<HashRingStreamQueueMapperOptions>(name);
-            });
+        ConfigureDelegate(services =>
+        {
+            services
+                .ConfigureNamedOptionForLogging<RedisStreamOptions>(name)
+                .ConfigureNamedOptionForLogging<HashRingStreamQueueMapperOptions>(name);
+        });
     }
 
     public ClusterClientRedisStreamConfigurator ConfigureRedis(Action<OptionsBuilder<RedisStreamOptions>> configureOptions)

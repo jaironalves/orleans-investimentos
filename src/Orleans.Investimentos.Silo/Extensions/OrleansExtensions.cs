@@ -1,12 +1,11 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using Orleans.Clustering.Redis;
 using Orleans.Configuration;
 using Orleans.Investimentos.Silo.Serialization;
 using Orleans.Investimentos.Silo.Storage;
-using Orleans.Investimentos.Silo.Streaming.Redis;
-using Orleans.Investimentos.Silo.Streaming.Redis.Hosting;
 using StackExchange.Redis;
+using Orleans.Investimentos.Streaming.Redis.Hosting;
+using Orleans.Investimentos.Streaming.Redis;
 
 namespace Orleans.Investimentos.Silo.Extensions;
 
@@ -20,9 +19,6 @@ public static class OrleansExtensions
 
     public static IHostApplicationBuilder AddOrleans(this IHostApplicationBuilder builder)
     {
-
-                     
-
         builder.Services
             .AddSingleton<IPostConfigureOptions<RedisClusteringOptions>, PostSingleMultiplexerConnection>();
 
@@ -100,16 +96,23 @@ public static class OrleansExtensions
                   });
 
                 silo
-                   .AddRedisStreams("AtivoPrecoStream", opt =>
+                   .AddRedisStreams("AtivoPrecoStream", (OptionsBuilder<RedisStreamOptions> opt) =>
                    {
-                       opt.ConfigurationOptions = redisOptions;
-                       opt.MaxStreamLength = 10;
-                       opt.TrimTimeMinutes = 2;
-                       opt.CreateMultiplexer = (sp, opt) =>
+                       opt.Configure<IServiceProvider>((opt, sp) =>
                        {
+                           opt.ConfigurationOptions = redisOptions;
                            var connectionMultiplexer = sp.GetRequiredService<IConnectionMultiplexer>();
-                           return Task.FromResult(connectionMultiplexer);
-                       };
+                           opt.CreateMultiplexer = (_) => Task.FromResult(connectionMultiplexer);
+                       });
+
+                       //opt.ConfigurationOptions = redisOptions;
+                       //opt.MaxStreamLength = 10;
+                       //opt.TrimTimeMinutes = 2;
+                       //opt.CreateMultiplexer = (opt) =>
+                       //{
+                       //    //var connectionMultiplexer = sp.GetRequiredService<IConnectionMultiplexer>();
+                       //    return Task.FromResult(null);
+                       //};
                    });
 
 

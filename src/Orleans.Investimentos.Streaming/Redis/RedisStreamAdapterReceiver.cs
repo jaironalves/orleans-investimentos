@@ -1,9 +1,9 @@
-﻿using Orleans.Investimentos.Silo.Streaming.Redis.Storage;
-using Orleans.Serialization;
+﻿using Microsoft.Extensions.Logging;
+using Orleans.Investimentos.Streaming.Redis.Storage;
 using Orleans.Streams;
 using StackExchange.Redis;
 
-namespace Orleans.Investimentos.Silo.Streaming.Redis;
+namespace Orleans.Investimentos.Streaming.Redis;
 
 internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
 {
@@ -96,7 +96,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
                 var container = dataAdapter.FromQueueMessage(streamEntry, lastSequenceId++);
                 messagesBatch.Add(container);
 
-                pendingMessages.Add(new PendingMessageAcknowledge(streamEntry, container.SequenceToken));
+                pendingMessages.Add(new PendingMessageAcknowledge(streamEntry, container.SequenceToken));                
             }           
 
             return messagesBatch;

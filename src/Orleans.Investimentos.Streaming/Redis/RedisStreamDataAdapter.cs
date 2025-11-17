@@ -1,9 +1,12 @@
-﻿using Orleans.Providers.Streams.Common;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Orleans;
+using Orleans.Providers.Streams.Common;
+using Orleans.Runtime;
 using Orleans.Serialization;
 using Orleans.Streams;
 using StackExchange.Redis;
 
-namespace Orleans.Investimentos.Silo.Streaming.Redis;
+namespace Orleans.Investimentos.Streaming.Redis;
 
 [SerializationCallbacks(typeof(OnDeserializedCallbacks))]
 public class RedisStreamDataAdapter(Serializer serializer) : IQueueDataAdapter<StreamEntry, IBatchContainer>, IOnDeserialized
