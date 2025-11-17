@@ -198,7 +198,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
         Level = LogLevel.Warning,
         Message = "Exception upon {Operation} on queue {QueueId}. Ignoring."
     )]
-    private partial void LogWarningOperationException(ILogger logger, Exception exception, string operation, QueueId queueId);
+    private static partial void LogWarningOperationException(ILogger logger, Exception exception, string operation, QueueId queueId);
 
     private record PendingMessageAcknowledge
     {

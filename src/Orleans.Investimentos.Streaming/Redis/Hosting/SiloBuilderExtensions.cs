@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Options;
 using Orleans.Hosting;
-using Orleans.Investimentos.Streaming.Redis.Hosting.Configurator;
 
 namespace Orleans.Investimentos.Streaming.Redis.Hosting;
 
