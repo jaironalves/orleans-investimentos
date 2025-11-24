@@ -1,13 +1,38 @@
-﻿using Orleans.Investimentos.Silo.Abstractions.Graos.Worker;
+﻿using Orleans.Investimentos.Silo.Abstractions.Graos.Ativo.Models;
+using Orleans.Investimentos.Silo.Abstractions.Graos.Worker;
 using Orleans.Investimentos.Silo.Graos.Base;
 using Orleans.Investimentos.Silo.Graos.Worker.States;
+using Orleans.Streams;
 
 namespace Orleans.Investimentos.Silo.Graos.Worker
 {
     internal class ExecucaoWorkerGrain(
        [PersistentState("execucaoWorkerState", "Investimentos")]
-       IPersistentState<ExecucaoWorkerState> persistentState, ILogger<ExecucaoWorkerGrain> logger) : GrainStringKey, IExecucaoWorkerGrain, IRemindable
+       IPersistentState<ExecucaoWorkerState> persistentState, ILogger<ExecucaoWorkerGrain> logger) : GrainStringKey, IExecucaoWorkerGrain, IRemindable, IAsyncObserver<bool>
     {
+        private IAsyncStream<bool> workerStream;
+
+        public override async Task OnActivateAsync(CancellationToken cancellationToken)
+        {
+            workerStream = this
+                        .GetStreamProvider("WorkerStream")
+                        .GetStream<bool>("Worker", this.GetPrimaryKeyString());
+
+            var allMyHandles =  await workerStream.GetAllSubscriptionHandles();
+
+            if (allMyHandles.Count > 0)
+            {
+                foreach (var handle in allMyHandles)
+                {
+                    //var redis = new RedisSequenceToken("1761270917005-0");               
+                    await handle.UnsubscribeAsync();
+                }
+            }
+
+            await workerStream
+             .SubscribeAsync(this);
+        }
+
         public async Task AgendarAsync(Dictionary<DateOnly, List<string>> registros)
         {
             persistentState.State.Itens = [.. registros
@@ -23,6 +48,9 @@ namespace Orleans.Investimentos.Silo.Graos.Worker
                 period: TimeSpan.FromDays(1)
                 );
 
+
+
+
             await persistentState.WriteStateAsync();
         }
 
@@ -32,7 +60,10 @@ namespace Orleans.Investimentos.Silo.Graos.Worker
             logger.LogInformation("ReceiveReminder {Key} chamado: {reminderName}", this.GetPrimaryKeyString(),  reminderName);
             //_ = ExecutarAsync(correlationId);
             //await ExecutarAsync(correlationId);
-            await ExecutarAsyncV2(correlationId);
+            //await ExecutarAsyncV2(correlationId);
+            await StartBackgroundWorkerAsync(ExecutarAsyncV2(correlationId));
+            //await workerStream.OnNextAsync(true);
+
             logger.LogInformation("ReceiveReminder {Key} finalizado: {reminderName}", this.GetPrimaryKeyString(), reminderName);
             //return Task.CompletedTask;
         }
@@ -144,6 +175,16 @@ namespace Orleans.Investimentos.Silo.Graos.Worker
             await persistentState.WriteStateAsync();
 
             logger.LogInformation("ExecucaoWorkerGrain.ExecutarAsync {Key} finalizado para CorrelationId: {correlationId}", this.GetPrimaryKeyString(), correlationId);
+        }
+
+        public async Task OnNextAsync(bool item, StreamSequenceToken token = null)
+        {
+            await ExecutarAsyncV2(Guid.NewGuid().ToString());
+        }
+
+        public Task OnErrorAsync(Exception ex)
+        {
+            return Task.CompletedTask;
         }
     }
 }

@@ -16,6 +16,6 @@ namespace Orleans.Investimentos.UnitTests.Silo.Graos
             
         }
 
-        internal
+        
     }
 }

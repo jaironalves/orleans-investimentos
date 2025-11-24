@@ -9,12 +9,33 @@ namespace Orleans.Investimentos.Silo.Graos.Base
 {
     internal class GrainStringKey : Grain, IGrainWithStringKey
     {
+        protected Task backgroundTask = null;
+
         internal GrainStringKey() { }
 
         internal GrainStringKey(IGrainContext grainContext) : base(grainContext)
         {
 
         }
+
+        protected Task StartBackgroundWorkerAsync(Task backgroundWorkerTask)
+        {   
+            backgroundTask = backgroundWorkerTask;
+            if (backgroundTask.IsCompleted)
+            {
+                return backgroundTask;
+            }            
+            return Task.CompletedTask;
+        }
+
+        protected async Task WaitBackgroundWorkerAsync()
+        {
+            if (backgroundTask is null)
+                return;
+
+            await backgroundTask;
+        }
+
 
         public async Task ForEachAsync<T>(IEnumerable<T> items,
             Func<T, CancellationToken, Task> itemProcessAsync,
@@ -77,7 +98,7 @@ namespace Orleans.Investimentos.Silo.Graos.Base
                     {
                         DelayDeactivation(incrementoAtivacao);
 
-                        await Task.Yield();
+                        //await Task.Yield();
 
                         cicloInicio = Stopwatch.GetTimestamp();
                         Interlocked.Exchange(ref contador, 0);

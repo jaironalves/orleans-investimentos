@@ -43,12 +43,14 @@ namespace Orleans.Investimentos.Silo.Graos.Worker
             return partition.ToString();
         }
 
-        public async Task ExecutarTarefaAsync(string correlationId, DateOnly data)
+        public Task ExecutarTarefaAsync(string correlationId, DateOnly data)
         {
             //logger.LogInformation("Iniciando {Grain} tarefa para CorrelationId: {correlationId} na data: {data}", this.GetPrimaryKeyString(), correlationId, data);
             var random = new Random();
-            var delay = random.Next(500, 1000);
-            await Task.Delay(delay);
+            var delay = random.Next(1000, 3000);
+            //Thread.Sleep(delay);
+            return Task.Delay(delay);
+            //return Task.CompletedTask;
             //logger.LogInformation("Tarefa {Grain} concluída para CorrelationId: {correlationId} na data: {data}", this.GetPrimaryKeyString(), correlationId, data);
         }
     }

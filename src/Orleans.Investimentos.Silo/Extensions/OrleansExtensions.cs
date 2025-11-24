@@ -83,19 +83,26 @@ public static class OrleansExtensions
                 silo
                   //.AddRedisGrainStorage("Investimentos");
                   .AddRedisGrainStorage("Investimentos", opt =>
-                  {   
-                      opt.ConfigurationOptions = redisOptions;
-                      opt.GrainStorageSerializer = new SystemTextJsonStorageSerializer();
-                     
-                      //   // opt.ConfigurationOptions.DefaultDatabase = 1;
-                      //    //opt.CreateMultiplexer = (_) => Task.FromResult<IConnectionMultiplexer>(new ConnectionMultiplexerWrapper(connection, 1));
-                  })
-                  .AddRedisGrainStorage("PubSubStore", opt =>
                   {
                       opt.ConfigurationOptions = redisOptions;
+                      opt.GrainStorageSerializer = new SystemTextJsonStorageSerializer();
+
+                      //   // opt.ConfigurationOptions.DefaultDatabase = 1;
+                      //    //opt.CreateMultiplexer = (_) => Task.FromResult<IConnectionMultiplexer>(new ConnectionMultiplexerWrapper(connection, 1));
                   });
 
+                //silo
+                  //.AddRedisGrainStorage("PubSubStore", opt =>
+                  //{
+                  //    opt.ConfigurationOptions = redisOptions;
+                  //});
+
+
                 silo
+                   .AddMemoryStreams("WorkerStream")
+                   .AddMemoryGrainStorage("PubSubStore");
+
+                silo                   
                    .AddRedisStreams("AtivoPrecoStream", (OptionsBuilder<RedisStreamOptions> opt) =>
                    {
                        opt.Configure<IServiceProvider>((opt, sp) =>
