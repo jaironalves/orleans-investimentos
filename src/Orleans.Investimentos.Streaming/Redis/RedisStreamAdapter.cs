@@ -10,8 +10,9 @@ namespace Orleans.Investimentos.Streaming.Redis;
 
 public class RedisStreamAdapter : IQueueAdapter
 {
-    private readonly RedisStreamServiceProvider provider;
-    private readonly RedisStreamOptions options;
+    private readonly string providerName;
+    private readonly RedisStreamOptions redisStreamOptions;
+    private readonly RedisStreamReceiverOptions redisStreamReceiverOptions;
 
     private readonly ClusterOptions clusterOptions;
     private readonly IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter;
@@ -21,24 +22,27 @@ public class RedisStreamAdapter : IQueueAdapter
 
     private readonly ConcurrentDictionary<QueueId, RedisStreamStorage> StreamStorages = new();
 
-    internal RedisStreamAdapter(RedisStreamServiceProvider provider,
-        RedisStreamOptions options,
+    internal RedisStreamAdapter(string providerName,
         ClusterOptions clusterOptions,
+        RedisStreamOptions redisStreamOptions,
+        RedisStreamReceiverOptions redisStreamReceiverOptions,        
         IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter,
         IConnectionMultiplexer connectionMultiplexer,
         IStreamQueueMapper streamQueueMapper,
         ILoggerFactory loggerFactory)
     {
-        this.provider = provider;
-        this.options = options;
+        this.providerName = providerName;
         this.clusterOptions = clusterOptions;
+        this.redisStreamOptions = redisStreamOptions;
+        this.redisStreamReceiverOptions = redisStreamReceiverOptions;
+        
         this.dataAdapter = dataAdapter;
         this.connectionMultiplexer = connectionMultiplexer;
         this.streamQueueMapper = streamQueueMapper;
         this.loggerFactory = loggerFactory;
     }
 
-    public string Name => provider.Name;
+    public string Name => providerName;
 
     public bool IsRewindable => false;
 
@@ -47,12 +51,12 @@ public class RedisStreamAdapter : IQueueAdapter
     public IQueueAdapterReceiver CreateReceiver(QueueId queueId)
     {
         var storage = GetStorage(queueId);
-        return RedisStreamAdapterReceiver.Create(options, dataAdapter, storage, queueId, TimeProvider.System, loggerFactory);
+        return RedisStreamAdapterReceiver.Create(redisStreamOptions, dataAdapter, storage, queueId, TimeProvider.System, loggerFactory);
     }
 
     private RedisStreamStorage GetStorage(QueueId queueId)
     {
-        var streamKey = options.GetRedisKey(clusterOptions, queueId);
+        var streamKey = redisStreamOptions.GetRedisKey(clusterOptions, queueId);
         var storage = new RedisStreamStorage(connectionMultiplexer, streamKey, queueId.ToString(), loggerFactory);
         return storage;
     }

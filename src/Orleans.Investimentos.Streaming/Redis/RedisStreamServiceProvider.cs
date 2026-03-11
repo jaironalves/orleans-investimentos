@@ -3,25 +3,25 @@ using Microsoft.Extensions.Options;
 
 namespace Orleans.Investimentos.Streaming.Redis;
 
-internal class RedisStreamServiceProvider(IServiceProvider serviceProvider, string name) : IServiceProvider
-{
-    public string Name => name;
+//internal class RedisStreamServiceProvider(IServiceProvider serviceProvider, string name) : IServiceProvider
+//{
+//    public string Name => name;
 
-    public object GetService(Type serviceType)
-    {
-        return serviceProvider.GetService(serviceType);
-    }
+//    public object GetService(Type serviceType)
+//    {
+//        return serviceProvider.GetService(serviceType);
+//    }
 
-    public TService GetComponentService<TService>() where TService : notnull
-    {
-        return serviceProvider.GetRequiredKeyedService<TService>(Name);        
-    }
+//    public TService GetComponentService<TService>() where TService : notnull
+//    {
+//        return serviceProvider.GetRequiredKeyedService<TService>(Name);        
+//    }
 
-    public TOption GetOptions<TOption>()
-        where TOption : class, new()
-    {
-        return serviceProvider
-            .GetRequiredService<IOptionsMonitor<TOption>>()
-            .Get(Name);
-    }
-}
+//    public TOption GetOptions<TOption>()
+//        where TOption : class, new()
+//    {
+//        return serviceProvider
+//            .GetRequiredService<IOptionsMonitor<TOption>>()
+//            .Get(Name);
+//    }
+//}
