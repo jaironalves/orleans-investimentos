@@ -29,7 +29,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
         ArgumentNullException.ThrowIfNull(timeProvider);
         ArgumentNullException.ThrowIfNull(loggerFactory);
 
-        return new RedisStreamAdapterReceiver(options, dataAdapter, storage, queueId, timeProvider, loggerFactory.CreateLogger<RedisStreamAdapterReceiver>());
+        return new RedisStreamAdapterReceiver(queueId, options, dataAdapter, storage, timeProvider, loggerFactory.CreateLogger<RedisStreamAdapterReceiver>());
     }
 
     private RedisStreamAdapterReceiver(

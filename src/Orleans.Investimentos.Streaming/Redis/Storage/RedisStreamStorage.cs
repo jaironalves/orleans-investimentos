@@ -228,7 +228,7 @@ internal partial class RedisStreamStorage
     {
         try
         {
-            var trimMessagesCount = await _database.StreamTrimAsync(streamKey, maxLength, useApproximateMaxLength);
+            var trimMessagesCount = await _database.StreamTrimAsync(_streamRedisKey, maxLength, useApproximateMaxLength);
             if (trimMessagesCount > 0)
             {
                 _logger.LogInformation("Trimmed Redis stream {StreamName} to max length {MaxLength}, removed {TrimmedCount} entries", streamName, maxLength, trimMessagesCount);
