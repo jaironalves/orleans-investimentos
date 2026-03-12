@@ -16,15 +16,14 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
 
     private readonly List<PendingMessageAcknowledge> pendingMessages = [];
 
-    private Task outstandingTask;
-    private string lastId = "$";
+    private Task outstandingTask;    
     private long lastSequenceId;
 
     private DateTimeOffset lastTrimTime;
 
-    internal static IQueueAdapterReceiver Create(RedisStreamOptions options,
+    internal static IQueueAdapterReceiver Create(QueueId queueId, RedisStreamOptions options,
         IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter, RedisStreamStorage storage,
-        QueueId queueId, TimeProvider timeProvider, ILoggerFactory loggerFactory)
+        TimeProvider timeProvider, ILoggerFactory loggerFactory)
     {
         if (queueId.IsDefault) throw new ArgumentNullException(nameof(queueId));
         ArgumentNullException.ThrowIfNull(timeProvider);
@@ -34,10 +33,11 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
     }
 
     private RedisStreamAdapterReceiver(
+        QueueId queueId,
         RedisStreamOptions options,
         IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter,
         RedisStreamStorage streamStorage,
-        QueueId queueId, TimeProvider timeProvider,
+        TimeProvider timeProvider,
         ILogger<RedisStreamAdapterReceiver> logger)
     {
         this.options = options;
@@ -50,13 +50,13 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
         lastTrimTime = timeProvider.GetUtcNow();
     }
 
-    public Task Initialize(TimeSpan timeout)
+    public async Task Initialize(TimeSpan timeout)
     {
         if (streamStorage != null) // check in case we already shut it down.
         {
-            return streamStorage.InitAsync();
+            await streamStorage.ConnectAsync();
+            await streamStorage.CreateGroupAsync();
         }
-        return Task.CompletedTask;
     }
 
     public async Task Shutdown(TimeSpan timeout)
@@ -82,11 +82,14 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
             if (streamStorageRef == null)
                 return [];
 
-            var task = streamStorageRef
-                .GetEntriesAsync(lastId, maxCount);
+            var count = maxCount is < 0 or QueueAdapterConstants.UNLIMITED_GET_QUEUE_MSG
+                ? RedisStreamStorage.MaxNumberOfMsgToGet
+                : Math.Min(maxCount, RedisStreamStorage.MaxNumberOfMsgToGet);
 
-            outstandingTask = task;
-            lastId = ">";
+            var task = streamStorageRef
+                .GetEntriesAsync(count);
+
+            outstandingTask = task;            
 
             var streamEntries = await task;
 
