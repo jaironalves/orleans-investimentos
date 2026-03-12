@@ -15,19 +15,18 @@ public class RedisStreamAdapter : IQueueAdapter
     private readonly RedisStreamReceiverOptions redisStreamReceiverOptions;
 
     private readonly ClusterOptions clusterOptions;
-    private readonly IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter;
-    private readonly IConnectionMultiplexer connectionMultiplexer;
+    private readonly IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter;    
     private readonly IStreamQueueMapper streamQueueMapper;
     private readonly ILoggerFactory loggerFactory;
 
+    private readonly SemaphoreSlim semaphoreSlim = new(initialCount: 1, maxCount: 1);
     private readonly ConcurrentDictionary<QueueId, RedisStreamStorage> StreamStorages = new();
 
     internal RedisStreamAdapter(string providerName,
         ClusterOptions clusterOptions,
         RedisStreamOptions redisStreamOptions,
         RedisStreamReceiverOptions redisStreamReceiverOptions,        
-        IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter,
-        IConnectionMultiplexer connectionMultiplexer,
+        IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter,        
         IStreamQueueMapper streamQueueMapper,
         ILoggerFactory loggerFactory)
     {
@@ -36,8 +35,7 @@ public class RedisStreamAdapter : IQueueAdapter
         this.redisStreamOptions = redisStreamOptions;
         this.redisStreamReceiverOptions = redisStreamReceiverOptions;
         
-        this.dataAdapter = dataAdapter;
-        this.connectionMultiplexer = connectionMultiplexer;
+        this.dataAdapter = dataAdapter;        
         this.streamQueueMapper = streamQueueMapper;
         this.loggerFactory = loggerFactory;
     }
@@ -50,27 +48,49 @@ public class RedisStreamAdapter : IQueueAdapter
 
     public IQueueAdapterReceiver CreateReceiver(QueueId queueId)
     {
-        var storage = GetStorage(queueId);
-        return RedisStreamAdapterReceiver.Create(redisStreamOptions, dataAdapter, storage, queueId, TimeProvider.System, loggerFactory);
+        var streamStorage = CreateStreamStorage(queueId);
+        return RedisStreamAdapterReceiver.Create(redisStreamOptions, dataAdapter, streamStorage, queueId, TimeProvider.System, loggerFactory);
     }
 
-    private RedisStreamStorage GetStorage(QueueId queueId)
+    private ValueTask<RedisStreamStorage> GetOrCreateStreamStorageAsync(QueueId queueId)
     {
-        var streamKey = redisStreamOptions.GetRedisKey(clusterOptions, queueId);
-        var storage = new RedisStreamStorage(connectionMultiplexer, streamKey, queueId.ToString(), loggerFactory);
-        return storage;
+        if (StreamStorages.TryGetValue(queueId, out var queue))
+        {
+            return ValueTask.FromResult(queue);
+        }
+        return GetStreamStorageAsync(queueId);
+    }
+
+    private async ValueTask<RedisStreamStorage> GetStreamStorageAsync(QueueId queueId)
+    {
+        await semaphoreSlim.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (!StreamStorages.TryGetValue(queueId, out var streamStorage))
+            {
+                streamStorage = CreateStreamStorage(queueId);
+                await streamStorage.ConnectAsync();
+                StreamStorages[queueId] = streamStorage;
+            }
+            return streamStorage;
+        }
+        finally
+        {
+            semaphoreSlim.Release();
+        }
+    }
+
+    private RedisStreamStorage CreateStreamStorage(QueueId queueId)
+    {
+        var streamStorage = new RedisStreamStorage(queueId, clusterOptions, redisStreamOptions, redisStreamReceiverOptions, loggerFactory);        
+        return streamStorage;
     }
 
     public async Task QueueMessageBatchAsync<T>(StreamId streamId, IEnumerable<T> events, StreamSequenceToken token, Dictionary<string, object> requestContext)
     {
         var queueId = streamQueueMapper.GetQueueForStream(streamId);
 
-        if (!StreamStorages.TryGetValue(queueId, out RedisStreamStorage streamStorage))
-        {
-            var tmpStreamStorage = GetStorage(queueId);
-            await tmpStreamStorage.InitAsync();
-            streamStorage = StreamStorages.GetOrAdd(queueId, tmpStreamStorage);
-        }
+        var streamStorage = await GetOrCreateStreamStorageAsync(queueId);
 
         var streamEntry = dataAdapter
             .ToQueueMessage(streamId, events, token, requestContext);
