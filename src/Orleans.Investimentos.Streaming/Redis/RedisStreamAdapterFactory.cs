@@ -10,8 +10,7 @@ using StackExchange.Redis;
 namespace Orleans.Investimentos.Streaming.Redis;
 
 public class RedisStreamAdapterFactory : IQueueAdapterFactory
-{
-    //private readonly RedisStreamServiceProvider provider;
+{   
     private readonly string _providerName;
     private readonly ClusterOptions _clusterOptions;
     private readonly RedisStreamOptions _redisStreamOptions;
@@ -20,14 +19,7 @@ public class RedisStreamAdapterFactory : IQueueAdapterFactory
     private readonly IStreamFailureHandler _streamFailureHandler;
     private readonly IStreamQueueMapper _streamQueueMapper;
     private readonly IQueueAdapterCache _queueAdapterCache;
-    private readonly ILoggerFactory _loggerFactory;
-
-    //public static IQueueAdapterFactory Create(IServiceProvider serviceProvider, string providerName)
-    //{
-    //    var redisStreamServiceProvider = new RedisStreamServiceProvider(serviceProvider, providerName);
-    //    var redisStreamAdapterFactory = new RedisStreamAdapterFactory(redisStreamServiceProvider);
-    //    return redisStreamAdapterFactory;
-    //}
+    private readonly ILoggerFactory _loggerFactory;    
 
     public static IQueueAdapterFactory Create(IServiceProvider serviceProvider, string providerName)
     {
@@ -37,8 +29,6 @@ public class RedisStreamAdapterFactory : IQueueAdapterFactory
         var hashRingStreamQueueMapperOptions = serviceProvider.GetOptionsByName<HashRingStreamQueueMapperOptions>(providerName);
         var simpleQueueCacheOptions = serviceProvider.GetOptionsByName<SimpleQueueCacheOptions>(providerName);
         var queueDataAdapter = serviceProvider.GetRequiredKeyedService<IQueueDataAdapter<StreamEntry, IBatchContainer>>(providerName);
-
-        //var receiverOptions = serviceProvider.GetOptionsByName<RedisStreamReceiverOptions>(name);
 
         return ActivatorUtilities
             .CreateInstance<RedisStreamAdapterFactory>(serviceProvider,
@@ -53,22 +43,7 @@ public class RedisStreamAdapterFactory : IQueueAdapterFactory
             TryAddKeyedSingleton<IQueueDataAdapter<StreamEntry, IBatchContainer>, RedisStreamDataAdapter>(providerName);
 
         return services;
-    }
-
-    //private RedisStreamAdapterFactory(RedisStreamServiceProvider provider)
-    //{
-    //    this.provider = provider;
-
-    //    _redisStreamOptions = provider.GetOptions<RedisStreamOptions>();
-
-    //    _queueDataAdapter = provider.GetComponentService<IQueueDataAdapter<StreamEntry, IBatchContainer>>();
-
-    //    _loggerFactory = provider.GetRequiredService<ILoggerFactory>();
-    //    _streamFailureHandler = new RedisStreamFailureHandler(_loggerFactory.CreateLogger<RedisStreamFailureHandler>());
-
-    //    var hashRingStreamQueueMapperOptions = provider.GetOptions<HashRingStreamQueueMapperOptions>();
-    //    _streamQueueMapper = new HashRingBasedStreamQueueMapper(hashRingStreamQueueMapperOptions, provider.Name);
-    //}
+    }    
 
     internal RedisStreamAdapterFactory() { }
 
