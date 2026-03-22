@@ -49,7 +49,7 @@ public class RedisStreamAdapter : IQueueAdapter
     public IQueueAdapterReceiver CreateReceiver(QueueId queueId)
     {
         var streamStorage = CreateStreamStorage(queueId);
-        return RedisStreamAdapterReceiver.Create(redisStreamOptions, dataAdapter, streamStorage, queueId, TimeProvider.System, loggerFactory);
+        return RedisStreamAdapterReceiver.Create(queueId, redisStreamOptions, dataAdapter, streamStorage, TimeProvider.System, loggerFactory);
     }
 
     private ValueTask<RedisStreamStorage> GetOrCreateStreamStorageAsync(QueueId queueId)
@@ -69,7 +69,7 @@ public class RedisStreamAdapter : IQueueAdapter
             if (!StreamStorages.TryGetValue(queueId, out var streamStorage))
             {
                 streamStorage = CreateStreamStorage(queueId);
-                await streamStorage.ConnectAsync();
+                await streamStorage.InitializeAsync();
                 StreamStorages[queueId] = streamStorage;
             }
             return streamStorage;

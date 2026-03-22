@@ -1,9 +1,14 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
 var siloRedis = builder
-    .AddRedis("silo-redis", port: 6380)
+    .AddRedis("silo-redis", 6379)
+    //.WithEndpoint("tcp", edp =>
+    //{
+    //    //edp.Port = 6380;
+    //})
     .WithDataVolume("orleans-investimentos-redis-data")
     .WithPersistence(TimeSpan.FromSeconds(10), 5);
+    
 
 var silo = builder
         .AddProject<Projects.Orleans_Investimentos_Silo>("orleans-investimentos-silo")

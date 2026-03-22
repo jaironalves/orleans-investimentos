@@ -95,15 +95,12 @@ public class RedisStreamAdapterFactory : IQueueAdapterFactory
         _streamFailureHandler = new RedisStreamFailureHandler(loggerFactory.CreateLogger<RedisStreamFailureHandler>());
     }
 
-    public async Task<IQueueAdapter> CreateAdapter()
+    public Task<IQueueAdapter> CreateAdapter()
     {
-        var connectionMultiplexer = await _redisStreamOptions.CreateMultiplexer(_redisStreamOptions);
-
         var queueAdapter = new RedisStreamAdapter(_providerName, _clusterOptions, _redisStreamOptions,
-            _redisStreamReceiverOptions, _queueDataAdapter, connectionMultiplexer, _streamQueueMapper,
-            _loggerFactory);
+            _redisStreamReceiverOptions, _queueDataAdapter, _streamQueueMapper, _loggerFactory);
 
-        return queueAdapter;
+        return Task.FromResult<IQueueAdapter>(queueAdapter);
     }
 
     public Task<IStreamFailureHandler> GetDeliveryFailureHandler(QueueId queueId)

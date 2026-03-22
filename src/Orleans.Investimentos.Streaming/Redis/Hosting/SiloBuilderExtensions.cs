@@ -10,8 +10,8 @@ public static class SiloBuilderExtensions
     /// </summary>
     public static ISiloBuilder AddRedisStreams(this ISiloBuilder builder, string name, Action<RedisStreamOptions> configureOptions)
     {
-        builder.AddRedisStreams(name, ob => 
-            ob.Configure(configureOptions));        
+        builder.AddRedisStreams(name, ob =>
+            ob.Configure(configureOptions));
         return builder;
     }
 
@@ -19,7 +19,7 @@ public static class SiloBuilderExtensions
     /// Configure silo to use Redis persistent streams.
     /// </summary>
     public static ISiloBuilder AddRedisStreams(this ISiloBuilder builder, string name, Action<OptionsBuilder<RedisStreamOptions>> configureOptionsBuilder)
-    {   
+    {
         builder.AddRedisStreams(name, cb =>
             cb.ConfigureRedis(configureOptionsBuilder));
         return builder;
@@ -35,5 +35,5 @@ public static class SiloBuilderExtensions
         configurator.PostConfigureComponents();
 
         return builder;
-    }    
+    }
 }

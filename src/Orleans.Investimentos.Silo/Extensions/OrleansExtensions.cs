@@ -91,16 +91,16 @@ public static class OrleansExtensions
                       //    //opt.CreateMultiplexer = (_) => Task.FromResult<IConnectionMultiplexer>(new ConnectionMultiplexerWrapper(connection, 1));
                   });
 
-                //silo
-                  //.AddRedisGrainStorage("PubSubStore", opt =>
-                  //{
-                  //    opt.ConfigurationOptions = redisOptions;
-                  //});
+                silo
+                .AddRedisGrainStorage("PubSubStore", opt =>
+                {
+                    opt.ConfigurationOptions = redisOptions;
+                });
 
 
                 silo
-                   .AddMemoryStreams("WorkerStream")
-                   .AddMemoryGrainStorage("PubSubStore");
+                   .AddMemoryStreams("WorkerStream");
+                   //.AddMemoryGrainStorage("PubSubStore");
 
                 silo                   
                    .AddRedisStreams("AtivoPrecoStream", (OptionsBuilder<RedisStreamOptions> opt) =>

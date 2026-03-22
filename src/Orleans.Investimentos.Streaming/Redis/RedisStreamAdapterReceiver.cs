@@ -54,8 +54,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
     {
         if (streamStorage != null) // check in case we already shut it down.
         {
-            await streamStorage.ConnectAsync();
-            await streamStorage.CreateGroupAsync();
+            await streamStorage.InitializeAsync();
         }
     }
 

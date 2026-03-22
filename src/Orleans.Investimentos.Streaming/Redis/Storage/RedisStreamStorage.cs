@@ -132,7 +132,13 @@ internal partial class RedisStreamStorage
         _streamRedisKey = _redisStreamOptions.GetRedisKey(clusterOptions, queueId);
     }
 
-    public async Task ConnectAsync()
+    public async Task InitializeAsync()
+    {
+        await ConnectAsync();
+        await CreateGroupAsync();
+    }
+
+    private async Task ConnectAsync()
     {
         try
         {
@@ -144,7 +150,7 @@ internal partial class RedisStreamStorage
         }
     }
 
-    public async Task CreateGroupAsync()
+    private async Task CreateGroupAsync()
     {
         try
         {
@@ -231,7 +237,7 @@ internal partial class RedisStreamStorage
             var trimMessagesCount = await _database.StreamTrimAsync(_streamRedisKey, maxLength, useApproximateMaxLength);
             if (trimMessagesCount > 0)
             {
-                _logger.LogInformation("Trimmed Redis stream {StreamName} to max length {MaxLength}, removed {TrimmedCount} entries", streamName, maxLength, trimMessagesCount);
+                _logger.LogInformation("Trimmed Redis stream {StreamName} to max length {MaxLength}, removed {TrimmedCount} entries", _streamQueueIdName, maxLength, trimMessagesCount);
             }
         }
         catch (Exception exc)
