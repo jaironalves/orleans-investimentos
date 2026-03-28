@@ -7,14 +7,14 @@ namespace Orleans.Investimentos.Streaming.Redis;
 
 internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
 {
-    private readonly IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter;
-    private RedisStreamStorage streamStorage;
-    private readonly QueueId queueId;
-    private readonly ILogger<RedisStreamAdapterReceiver> logger;
+    private readonly IQueueDataAdapter<StreamEntry, IBatchContainer> _dataAdapter;
+    private RedisStreamStorage? _streamStorage;
+    private readonly QueueId _queueId;
+    private readonly ILogger<RedisStreamAdapterReceiver> _logger;
 
-    private readonly List<RedisStreamPendingMessage> pendingMessages = [];
+    private readonly List<RedisStreamPendingMessage> _pendingMessages = [];
 
-    private Task outstandingTask;
+    private Task? outstandingTask;
     private long lastSequenceId;
 
     internal static IQueueAdapterReceiver Create(QueueId queueId,
@@ -33,17 +33,17 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
         RedisStreamStorage streamStorage,
         ILogger<RedisStreamAdapterReceiver> logger)
     {
-        this.dataAdapter = dataAdapter;
-        this.streamStorage = streamStorage;
-        this.queueId = queueId;
-        this.logger = logger;
+        _dataAdapter = dataAdapter;
+        _streamStorage = streamStorage;
+        _queueId = queueId;
+        _logger = logger;
     }
 
     public async Task Initialize(TimeSpan timeout)
     {
-        if (streamStorage != null) // check in case we already shut it down.
+        if (_streamStorage != null) // check in case we already shut it down.
         {
-            await streamStorage.InitializeAsync();
+            await _streamStorage.InitializeAsync();
         }
     }
 
@@ -58,7 +58,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
         finally
         {
             // remember that we shut down so we never try to read from the queue again.
-            streamStorage = null;
+            _streamStorage = null;
         }
     }
 
@@ -66,7 +66,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
     {
         try
         {
-            var streamStorageRef = streamStorage; // store direct ref, in case we are somehow asked to shutdown while we are receiving.
+            var streamStorageRef = _streamStorage; // store direct ref, in case we are somehow asked to shutdown while we are receiving.
             if (streamStorageRef == null)
                 return [];
 
@@ -84,18 +84,18 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
             var messagesBatch = new List<IBatchContainer>();
             foreach (var streamEntry in streamEntries)
             {
-                var container = dataAdapter.FromQueueMessage(streamEntry, lastSequenceId++);
+                var container = _dataAdapter.FromQueueMessage(streamEntry, lastSequenceId++);
                 messagesBatch.Add(container);
 
-                pendingMessages.Add(new RedisStreamPendingMessage(streamEntry, container.SequenceToken));
+                _pendingMessages.Add(new RedisStreamPendingMessage(streamEntry, container.SequenceToken));
             }
 
             return messagesBatch;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error reading from stream {QueueId}", queueId);
-            return default;
+            _logger.LogError(ex, "Error reading from stream {QueueId}", _queueId);
+            return [];
         }
         finally
         {
@@ -107,7 +107,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
     {
         try
         {
-            var streamStorageRef = streamStorage; // store direct ref, in case we are somehow asked to shutdown while we are receiving.            
+            var streamStorageRef = _streamStorage; // store direct ref, in case we are somehow asked to shutdown while we are receiving.            
             if (messages.Count == 0 || streamStorageRef == null)
                 return;
 
@@ -115,10 +115,10 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
             var deliveredTokens = messages.Select(m => m.SequenceToken).ToList();
 
             // find most recent (newest) delivered message token
-            StreamSequenceToken newestToken = deliveredTokens.Max();
+            var newestToken = deliveredTokens.Max();
 
             // select all pending messages at or befor the newest delivered token
-            var pendingMessagesToRemove = pendingMessages
+            var pendingMessagesToRemove = _pendingMessages
                 .Where(pendingMessage => !pendingMessage.Token.Newer(newestToken))
                 .ToList();
 
@@ -127,7 +127,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
 
             // remove all pending messages at or befor the oldest token from pending, regardless of if it was acknowledge or not.
             foreach (var pendingMessage in pendingMessagesToRemove)
-                pendingMessages.Remove(pendingMessage);
+                _pendingMessages.Remove(pendingMessage);
 
             // get the stream entries for all messages deliveries that were delivered.
             var pendingMessagesStreamEntries = pendingMessagesToRemove
@@ -146,7 +146,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
             }
             catch (Exception exc)
             {
-                LogWarningOperationException(logger, exc, nameof(streamStorageRef.EntriesAcknowledgeAsync), queueId);
+                LogWarningOperationException(_logger, exc, nameof(streamStorageRef.EntriesAcknowledgeAsync), _queueId);
             }
         }
         finally

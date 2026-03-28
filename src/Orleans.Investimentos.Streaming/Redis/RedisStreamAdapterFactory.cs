@@ -10,18 +10,23 @@ using StackExchange.Redis;
 namespace Orleans.Investimentos.Streaming.Redis;
 
 public class RedisStreamAdapterFactory : IQueueAdapterFactory
-{   
+{
     private readonly string _providerName;
     private readonly ClusterOptions _clusterOptions;
     private readonly RedisStreamOptions _redisStreamOptions;
     private readonly RedisStreamReceiverOptions _redisStreamReceiverOptions;
     private readonly IQueueDataAdapter<StreamEntry, IBatchContainer> _queueDataAdapter;
-    private readonly IStreamFailureHandler _streamFailureHandler;
     private readonly IStreamQueueMapper _streamQueueMapper;
     private readonly IQueueAdapterCache _queueAdapterCache;
-    private readonly ILoggerFactory _loggerFactory;    
+    private readonly ILoggerFactory _loggerFactory;
 
-    public static IQueueAdapterFactory Create(IServiceProvider serviceProvider, string providerName)
+    private Func<QueueId, Task<IStreamFailureHandler>>? _streamFailureHandlerFactory;
+
+    private Func<QueueId, Task<IStreamFailureHandler>> StreamFailureHandlerFactory =>
+        _streamFailureHandlerFactory ??= 
+        (qid => Task.FromResult<IStreamFailureHandler>(new NoOpStreamDeliveryFailureHandler()));
+
+    public static RedisStreamAdapterFactory Create(IServiceProvider serviceProvider, string providerName)
     {
         var clusterOptions = serviceProvider.GetProviderClusterOptions(providerName).Value;
         var redisStreamOptions = serviceProvider.GetOptionsByName<RedisStreamOptions>(providerName);
@@ -30,22 +35,21 @@ public class RedisStreamAdapterFactory : IQueueAdapterFactory
         var simpleQueueCacheOptions = serviceProvider.GetOptionsByName<SimpleQueueCacheOptions>(providerName);
         var queueDataAdapter = serviceProvider.GetRequiredKeyedService<IQueueDataAdapter<StreamEntry, IBatchContainer>>(providerName);
 
-        return ActivatorUtilities
+        var factory = ActivatorUtilities
             .CreateInstance<RedisStreamAdapterFactory>(serviceProvider,
                 providerName, clusterOptions, redisStreamOptions, redisStreamReceiverOptions,
                 hashRingStreamQueueMapperOptions, simpleQueueCacheOptions,
                 queueDataAdapter);
+        return factory;
     }
 
     public static IServiceCollection PostConfigureDefaults(IServiceCollection services, string providerName)
     {
         services.
-            TryAddKeyedSingleton<IQueueDataAdapter<StreamEntry, IBatchContainer>, RedisStreamDataAdapter>(providerName);
+            TryAddKeyedSingleton<IQueueDataAdapter<StreamEntry, IBatchContainer>, RedisStreamDataAdapterV1>(providerName);
 
         return services;
-    }    
-
-    internal RedisStreamAdapterFactory() { }
+    }
 
     public RedisStreamAdapterFactory(
         string providerName,
@@ -67,8 +71,7 @@ public class RedisStreamAdapterFactory : IQueueAdapterFactory
 
         _streamQueueMapper = new HashRingBasedStreamQueueMapper(hashRingStreamQueueMapperOptions, providerName);
         _queueAdapterCache = new SimpleQueueAdapterCache(simpleQueueCacheOptions, providerName, loggerFactory);
-        _streamFailureHandler = new RedisStreamFailureHandler(loggerFactory.CreateLogger<RedisStreamFailureHandler>());
-    }
+    }   
 
     public Task<IQueueAdapter> CreateAdapter()
     {
@@ -78,18 +81,10 @@ public class RedisStreamAdapterFactory : IQueueAdapterFactory
         return Task.FromResult<IQueueAdapter>(queueAdapter);
     }
 
-    public Task<IStreamFailureHandler> GetDeliveryFailureHandler(QueueId queueId)
-    {
-        return Task.FromResult(_streamFailureHandler);
-    }
+    public Task<IStreamFailureHandler> GetDeliveryFailureHandler(QueueId queueId) =>
+           StreamFailureHandlerFactory(queueId);
 
-    public IQueueAdapterCache GetQueueAdapterCache()
-    {
-        return _queueAdapterCache;
-    }
+    public IQueueAdapterCache GetQueueAdapterCache() => _queueAdapterCache;
 
-    public IStreamQueueMapper GetStreamQueueMapper()
-    {
-        return _streamQueueMapper;
-    }
+    public IStreamQueueMapper GetStreamQueueMapper() => _streamQueueMapper;
 }

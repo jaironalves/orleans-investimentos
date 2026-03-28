@@ -16,13 +16,7 @@ public sealed class RedisStreamReceiverOptions
     /// </summary>
     public string ConsumerName { get; set; } = DefaultConsumerName;
     public const string DefaultConsumerName = "pullingagent";
-
-    /// <summary>
-    /// Redis streams message field name.
-    /// </summary>
-    public string FieldName { get; set; } = DefaultFieldName;
-    public const string DefaultFieldName = "payload";
-
+        
     /// <summary>
     /// Delivered streams message timeout.
     /// </summary>
