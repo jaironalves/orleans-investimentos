@@ -7,47 +7,36 @@ namespace Orleans.Investimentos.Streaming.Redis;
 
 internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
 {
-    private readonly RedisStreamOptions options;
     private readonly IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter;
     private RedisStreamStorage streamStorage;
     private readonly QueueId queueId;
-    private readonly TimeProvider timeProvider;
     private readonly ILogger<RedisStreamAdapterReceiver> logger;
 
-    private readonly List<PendingMessageAcknowledge> pendingMessages = [];
+    private readonly List<RedisStreamPendingMessage> pendingMessages = [];
 
-    private Task outstandingTask;    
+    private Task outstandingTask;
     private long lastSequenceId;
 
-    //private DateTimeOffset lastTrimTime;
-
-    internal static IQueueAdapterReceiver Create(QueueId queueId, RedisStreamOptions options,
-        IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter, RedisStreamStorage storage,
-        TimeProvider timeProvider, ILoggerFactory loggerFactory)
+    internal static IQueueAdapterReceiver Create(QueueId queueId,
+        IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter,
+        RedisStreamStorage storage, ILoggerFactory loggerFactory)
     {
         if (queueId.IsDefault) throw new ArgumentNullException(nameof(queueId));
-        ArgumentNullException.ThrowIfNull(timeProvider);
         ArgumentNullException.ThrowIfNull(loggerFactory);
 
-        return new RedisStreamAdapterReceiver(queueId, options, dataAdapter, storage, timeProvider, loggerFactory.CreateLogger<RedisStreamAdapterReceiver>());
+        return new RedisStreamAdapterReceiver(queueId, dataAdapter, storage, loggerFactory.CreateLogger<RedisStreamAdapterReceiver>());
     }
 
     private RedisStreamAdapterReceiver(
         QueueId queueId,
-        RedisStreamOptions options,
         IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter,
         RedisStreamStorage streamStorage,
-        TimeProvider timeProvider,
         ILogger<RedisStreamAdapterReceiver> logger)
     {
-        this.options = options;
         this.dataAdapter = dataAdapter;
         this.streamStorage = streamStorage;
         this.queueId = queueId;
-        this.timeProvider = timeProvider;
         this.logger = logger;
-
-        //lastTrimTime = timeProvider.GetUtcNow();
     }
 
     public async Task Initialize(TimeSpan timeout)
@@ -88,7 +77,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
             var task = streamStorageRef
                 .GetEntriesAsync(count);
 
-            outstandingTask = task;            
+            outstandingTask = task;
 
             var streamEntries = await task;
 
@@ -98,8 +87,8 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
                 var container = dataAdapter.FromQueueMessage(streamEntry, lastSequenceId++);
                 messagesBatch.Add(container);
 
-                pendingMessages.Add(new PendingMessageAcknowledge(streamEntry, container.SequenceToken));                
-            }           
+                pendingMessages.Add(new RedisStreamPendingMessage(streamEntry, container.SequenceToken));
+            }
 
             return messagesBatch;
         }
@@ -111,38 +100,8 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
         finally
         {
             outstandingTask = null;
-
-            //await TrimStorageAsyncIfNeeded();
         }
     }
-
-    //private async Task TrimStorageAsyncIfNeeded()
-    //{
-    //    try
-    //    {
-    //        if (timeProvider.GetUtcNow() - lastTrimTime < TimeSpan.FromMinutes(options.TrimTimeMinutes))
-    //            return;
-
-    //        var streamStorageRef = streamStorage; // store direct ref, in case we are somehow asked to shutdown while we are receiving.
-    //        if (streamStorageRef == null)
-    //            return;
-
-    //        outstandingTask = streamStorageRef.TrimAsync(options.MaxStreamLength, true);
-    //        try
-    //        {
-    //            await outstandingTask;
-    //            lastTrimTime = timeProvider.GetUtcNow();
-    //        }
-    //        catch (Exception exc)
-    //        {
-    //            LogWarningOperationException(logger, exc, nameof(streamStorageRef.TrimAsync), queueId);
-    //        }
-    //    }
-    //    finally
-    //    {
-    //        outstandingTask = null;
-    //    }
-    //}
 
     public async Task MessagesDeliveredAsync(IList<IBatchContainer> messages)
     {
@@ -163,7 +122,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
                 .Where(pendingMessage => !pendingMessage.Token.Newer(newestToken))
                 .ToList();
 
-            if (pendingMessagesToRemove.Count == 0) 
+            if (pendingMessagesToRemove.Count == 0)
                 return;
 
             // remove all pending messages at or befor the oldest token from pending, regardless of if it was acknowledge or not.
@@ -176,8 +135,8 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
                 .Select(pendingMessage => pendingMessage.StreamEntry)
                 .ToList();
 
-            if (pendingMessagesStreamEntries.Count == 0) 
-                return;            
+            if (pendingMessagesStreamEntries.Count == 0)
+                return;
 
             // Acknowledge all delivered messages.
             outstandingTask = streamStorageRef.EntriesAcknowledgeAsync(pendingMessagesStreamEntries);
@@ -201,17 +160,4 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
         Message = "Exception upon {Operation} on queue {QueueId}. Ignoring."
     )]
     private static partial void LogWarningOperationException(ILogger logger, Exception exception, string operation, QueueId queueId);
-
-    private record PendingMessageAcknowledge
-    {
-        public PendingMessageAcknowledge(StreamEntry streamEntry, StreamSequenceToken token)
-        {
-            Token = token;
-            StreamEntry = streamEntry;
-        }
-
-        public StreamEntry StreamEntry { get; }
-
-        public StreamSequenceToken Token { get; }
-    }
 }
