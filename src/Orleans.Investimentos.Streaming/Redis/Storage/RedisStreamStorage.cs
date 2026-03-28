@@ -217,16 +217,39 @@ internal partial class RedisStreamStorage
         return entriesResult;
     }
 
-    public async Task EntryAcknowledgeAsync(RedisValue messageId)
+    //public async Task EntryAcknowledgeAsync(RedisValue messageId)
+    //{
+    //    try
+    //    {
+    //        await _database.StreamAcknowledgeAsync(_streamRedisKey, 
+    //            _redisStreamReceiverOptions.ConsumerGroupName, messageId);
+    //    }
+    //    catch (Exception exc)
+    //    {
+    //        ReportErrorAndRethrow(exc, nameof(EntryAcknowledgeAsync));
+    //    }
+    //}
+
+    public async Task EntriesAcknowledgeAsync(IEnumerable<StreamEntry> streamEntries)
     {
+        const string DeliveredScript =
+            """
+            local ack = redis.call('XACK', KEYS[1], ARGV[1], unpack(ARGV, 2))
+            local delete = redis.call('XDEL', KEYS[1], unpack(ARGV, 2))
+            return { ack, delete }
+            """;
+
+        var streamEntriesId = streamEntries.Select(x => x.Id).ToArray();
+        var args = new RedisValue[streamEntriesId.Length + 1];
+        args[0] = _redisStreamReceiverOptions.ConsumerGroupName;
+        Array.Copy(streamEntriesId, 0, args, 1, streamEntriesId.Length);
         try
         {
-            await _database.StreamAcknowledgeAsync(_streamRedisKey, 
-                _redisStreamReceiverOptions.ConsumerGroupName, messageId);
+            await _database.ScriptEvaluateAsync(DeliveredScript, keys: [_streamRedisKey], values: args);
         }
         catch (Exception exc)
         {
-            ReportErrorAndRethrow(exc, nameof(EntryAcknowledgeAsync));
+            ReportErrorAndRethrow(exc, nameof(EntriesAcknowledgeAsync));
         }
     }
 

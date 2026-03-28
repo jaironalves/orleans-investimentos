@@ -19,7 +19,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
     private Task outstandingTask;    
     private long lastSequenceId;
 
-    private DateTimeOffset lastTrimTime;
+    //private DateTimeOffset lastTrimTime;
 
     internal static IQueueAdapterReceiver Create(QueueId queueId, RedisStreamOptions options,
         IQueueDataAdapter<StreamEntry, IBatchContainer> dataAdapter, RedisStreamStorage storage,
@@ -47,7 +47,7 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
         this.timeProvider = timeProvider;
         this.logger = logger;
 
-        lastTrimTime = timeProvider.GetUtcNow();
+        //lastTrimTime = timeProvider.GetUtcNow();
     }
 
     public async Task Initialize(TimeSpan timeout)
@@ -112,37 +112,37 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
         {
             outstandingTask = null;
 
-            await TrimStorageAsyncIfNeeded();
+            //await TrimStorageAsyncIfNeeded();
         }
     }
 
-    private async Task TrimStorageAsyncIfNeeded()
-    {
-        try
-        {
-            if (timeProvider.GetUtcNow() - lastTrimTime < TimeSpan.FromMinutes(options.TrimTimeMinutes))
-                return;
+    //private async Task TrimStorageAsyncIfNeeded()
+    //{
+    //    try
+    //    {
+    //        if (timeProvider.GetUtcNow() - lastTrimTime < TimeSpan.FromMinutes(options.TrimTimeMinutes))
+    //            return;
 
-            var streamStorageRef = streamStorage; // store direct ref, in case we are somehow asked to shutdown while we are receiving.
-            if (streamStorageRef == null)
-                return;
+    //        var streamStorageRef = streamStorage; // store direct ref, in case we are somehow asked to shutdown while we are receiving.
+    //        if (streamStorageRef == null)
+    //            return;
 
-            outstandingTask = streamStorageRef.TrimAsync(options.MaxStreamLength, true);
-            try
-            {
-                await outstandingTask;
-                lastTrimTime = timeProvider.GetUtcNow();
-            }
-            catch (Exception exc)
-            {
-                LogWarningOperationException(logger, exc, nameof(streamStorageRef.EntryAcknowledgeAsync), queueId);
-            }
-        }
-        finally
-        {
-            outstandingTask = null;
-        }
-    }
+    //        outstandingTask = streamStorageRef.TrimAsync(options.MaxStreamLength, true);
+    //        try
+    //        {
+    //            await outstandingTask;
+    //            lastTrimTime = timeProvider.GetUtcNow();
+    //        }
+    //        catch (Exception exc)
+    //        {
+    //            LogWarningOperationException(logger, exc, nameof(streamStorageRef.TrimAsync), queueId);
+    //        }
+    //    }
+    //    finally
+    //    {
+    //        outstandingTask = null;
+    //    }
+    //}
 
     public async Task MessagesDeliveredAsync(IList<IBatchContainer> messages)
     {
@@ -170,24 +170,24 @@ internal partial class RedisStreamAdapterReceiver : IQueueAdapterReceiver
             foreach (var pendingMessage in pendingMessagesToRemove)
                 pendingMessages.Remove(pendingMessage);
 
-            // get the stream entries id for all messages deliveries that were delivered.
-            var pendingMessagesStreamEntriesId = pendingMessagesToRemove
+            // get the stream entries for all messages deliveries that were delivered.
+            var pendingMessagesStreamEntries = pendingMessagesToRemove
                 .Where(pendingMessage => deliveredTokens.Contains(pendingMessage.Token))
-                .Select(pendingMessage => pendingMessage.StreamEntry.Id)
+                .Select(pendingMessage => pendingMessage.StreamEntry)
                 .ToList();
 
-            if (pendingMessagesStreamEntriesId.Count == 0) 
+            if (pendingMessagesStreamEntries.Count == 0) 
                 return;            
 
             // Acknowledge all delivered messages.
-            outstandingTask = Task.WhenAll(pendingMessagesStreamEntriesId.Select(streamStorageRef.EntryAcknowledgeAsync));
+            outstandingTask = streamStorageRef.EntriesAcknowledgeAsync(pendingMessagesStreamEntries);
             try
             {
                 await outstandingTask;
             }
             catch (Exception exc)
             {
-                LogWarningOperationException(logger, exc, nameof(streamStorageRef.EntryAcknowledgeAsync), queueId);
+                LogWarningOperationException(logger, exc, nameof(streamStorageRef.EntriesAcknowledgeAsync), queueId);
             }
         }
         finally
