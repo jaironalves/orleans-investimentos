@@ -54,9 +54,7 @@ public static class OrleansExtensions
                     {
                         opt.Configure<IServiceProvider>((opt, sp) =>
                         {
-                            opt.ConfigurationOptions = redisOptions;
-                            opt.MaxStreamLength = 10;
-                            opt.TrimTimeMinutes = 2;
+                            opt.ConfigurationOptions = redisOptions;                            
                             opt.CreateMultiplexer = (_) =>
                             {
                                 var connectionMultiplexer = sp.GetRequiredService<IConnectionMultiplexer>();

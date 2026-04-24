@@ -27,16 +27,10 @@ public class RedisStreamOptions
     public Func<ClusterOptions, QueueId, RedisKey> GetRedisKey { get; set; } = DefaultGetRedisKey;
 
     /// <summary>
-    /// The maximum length of the stream used to trim old entries.    
-    /// </summary>    
-    /// <remarks><seealso href="https://redis.io/topics/streams-intro"/></remarks>    
-    public int MaxStreamLength { get; set; } = 1000;
-
-    /// <summary>
-    /// The time in minutes after which entries in the stream will be trimmed.
+    /// Entry expiry, null by default. A value should be set ONLY for ephemeral environments (like in tests).
+    /// Setting a value different from null will cause stream entries to be deleted after some period of time.
     /// </summary>
-    public int TrimTimeMinutes { get; set; } = 5;
-
+    public TimeSpan? EntryExpiry { get; set; }
 
     /// <summary>
     /// The default multiplexer creation delegate.
@@ -51,7 +45,7 @@ public class RedisStreamOptions
     /// </summary>        
     private static RedisKey DefaultGetRedisKey(ClusterOptions clusterOptions, QueueId queueId)
     {
-        RedisKey key = Encoding.UTF8.GetBytes($"{clusterOptions.ServiceId}/streams/{queueId}");
+        RedisKey key = Encoding.UTF8.GetBytes($"{clusterOptions.ServiceId}/streaming/{queueId}");
         return key;
     }
 }

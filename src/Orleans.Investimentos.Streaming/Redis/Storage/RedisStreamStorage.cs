@@ -43,7 +43,14 @@ internal partial class RedisStreamStorage
     {
         try
         {
-            _database ??= (await _redisStreamOptions.CreateMultiplexer.Invoke(_redisStreamOptions)).GetDatabase();
+            if (_database is null)
+            {
+                _database = (await _redisStreamOptions.CreateMultiplexer.Invoke(_redisStreamOptions)).GetDatabase();
+                if (_redisStreamOptions.EntryExpiry is { } expiry)
+                {
+                    await _database.KeyExpireAsync(_streamRedisKey, expiry);
+                }
+            }            
         }
         catch (Exception exc)
         {
@@ -58,9 +65,9 @@ internal partial class RedisStreamStorage
             await _database
                 .StreamCreateConsumerGroupAsync(_streamRedisKey, _redisStreamReceiverOptions.ConsumerGroupName, position: 0, createStream: true);
         }
-        catch (Exception exc) when (exc.Message.Contains("name already exists"))
+        catch (RedisServerException exc) when (exc.Message.Equals("BUSYGROUP Consumer Group name already exists"))
         {
-            _logger.LogInformation("Consumer group {GroupName} already exists for stream {StreamQueueIdName}", _redisStreamReceiverOptions.ConsumerGroupName, _streamQueueIdName);
+            // The group already exists, so we can ignore this exception.
         }
         catch (Exception exc)
         {
