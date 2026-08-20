@@ -1,0 +1,30 @@
+WITH dias_relevantes AS (
+    SELECT
+        ordem_id,
+        DATE(data_evento) AS dia,
+        ROW_NUMBER() OVER (
+            PARTITION BY ordem_id
+            ORDER BY DATE(data_evento) DESC
+        ) AS rn
+    FROM ordem_evento
+    WHERE tipo_evento <> 'PENDENTE'
+    GROUP BY
+        ordem_id,
+        DATE(data_evento)
+),
+limite AS (
+    SELECT
+        ordem_id,
+        MIN(dia) AS primeiro_dia
+    FROM dias_relevantes
+    WHERE rn <= 2
+    GROUP BY ordem_id
+)
+SELECT oe.*
+FROM ordem_evento oe
+JOIN limite l
+    ON l.ordem_id = oe.ordem_id
+   AND DATE(oe.data_evento) >= l.primeiro_dia
+ORDER BY
+    oe.ordem_id,
+    oe.data_evento;
